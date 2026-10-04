@@ -6,7 +6,7 @@
 @media(max-width:900px){.wrap{padding:12px}.toolbar input{min-width:100%}.grp,.flat{overflow-x:auto}table{min-width:1320px}}
 </style></head><body><div id="login" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px"><div style="width:min(420px,100%);background:white;border:1px solid #dce2e8;border-radius:10px;padding:24px"><h1 style="color:#172536;margin-bottom:4px">Dune Listings</h1><div style="color:#687586;margin-bottom:18px">Private access</div><input id="email" type="email" value="dunetickets@gmail.com" style="width:100%;padding:10px;border:1px solid #dce2e8;border-radius:6px;margin-bottom:8px"><input id="password" type="password" placeholder="Password" style="width:100%;padding:10px;border:1px solid #dce2e8;border-radius:6px;margin-bottom:10px"><button id="loginbtn" style="width:100%;padding:10px;border:0;border-radius:6px;background:#172536;color:white;font-weight:700;cursor:pointer">Sign in</button><button id="signupbtn" style="display:none;width:100%;padding:10px;border:1px solid #dce2e8;border-radius:6px;background:white;margin-top:8px;font-weight:700;cursor:pointer">Create first-time account</button><div id="authmsg" style="margin-top:10px;color:#687586;font-size:12px"></div></div></div><div id="app" style="display:none"><header><div><h1>Dune Listings</h1><div class="sub">Shared event-listing workflow</div></div><div style="display:flex;gap:10px;align-items:center"><div class="sync" id="sync">Loading…</div><button id="logout" style="border:1px solid #dde2ea;background:white;color:#566074;border-radius:6px;padding:5px 8px;cursor:pointer">Sign out</button></div></header><div class="wrap">
 <div class="tabs"><button data-v="events" class="on">Events</button><button data-v="venues">Venues</button><button data-v="SO">Sold Out <span data-count="SO"></span></button><button data-v="ISO">ISO <span data-count="ISO"></span></button><button data-v="NS">NS <span data-count="NS"></span></button></div>
-<div class="toolbar"><input id="q" placeholder="Search event, venue, city…"><select id="lf"><option value="all">All listing status</option><option value="unlisted">Not listed</option><option value="listed">Listed</option></select><div class="pri"><span>Priority</span><label><input type="checkbox" name="pri" value="P1">P1</label><label><input type="checkbox" name="pri" value="P2">P2</label><label><input type="checkbox" name="pri" value="P3">P3</label><label><input type="checkbox" name="pri" value="P4">P4</label></div><div id="cnt" class="cnt"></div></div><div id="c"></div></div>
+<div class="toolbar"><input id="q" placeholder="Search event, venue, city…"><select id="lf"><option value="all">All listing status</option><option value="unlisted">Not listed</option><option value="listed">Listed</option></select><div class="pri"><span>Priority</span><label><input type="checkbox" name="pri" value="P1">Excellent</label><label><input type="checkbox" name="pri" value="P2">Good</label><label><input type="checkbox" name="pri" value="P3">Medium</label><label><input type="checkbox" name="pri" value="P4">Low</label></div><div id="cnt" class="cnt"></div></div><div id="c"></div></div>
 
 <script>
 const SB='https://rpngmxrgjmcjzhgaoegq.supabase.co',FEED=SB+'/rest/v1/v_listing_feed',API=SB+'/rest/v1/listing_events',PAPI=SB+'/rest/v1/listing_performances',KEY='sb_publishable_EtA1OzLOhSraN9y8gKpp1g_hCZy8iCg',APPROVED='dunetickets@gmail.com';let TOKEN=sessionStorage.getItem('dl_token')||'';
@@ -15,7 +15,7 @@ const PAGE=150;let D=[],v='events',TOTAL=0,LOADING=false,SEARCHT=null;
 const $=s=>document.querySelector(s),e=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function ds(x){if(!x)return'';let a=String(x).split('-');return a.length===3?a[1]+'/'+a[2]+'/'+a[0].slice(2):x}
 function av(x){if(x.availability_status==='NOT_ON_SALE')return '<span class="avail">'+(x.onsale_date?'On sale '+e(ds(x.onsale_date)):'Announced · on-sale TBD')+'</span>';if(x.availability_status==='PRESALE')return '<span class="avail">Presale'+(x.onsale_date?' · public '+e(ds(x.onsale_date)):'')+'</span>';return''}
-function pl(x){return ({P1:'P1 Priority',P2:'P2 Core',P3:'P3 Selective',P4:'P4 Monitor'})[x]||x||''}
+function pl(x){return ({P1:'Excellent',P2:'Good',P3:'Medium',P4:'Low'})[x]||x||''}
 function wk(x){let w=String(x.why_priority||'');return x.priority==='P1'||/(exact (history|product|series|artist|venue)|strong direct history|box office proof|box-office evidence|sold out|current exact event|nutcracker archetype)/i.test(w)}
 function qval(t){return '"*'+String(t).replace(/["\\]/g,'\\$&')+'*"'}
 
@@ -65,7 +65,7 @@ async function resetAndLoad(){
   try{
     const {rows,total}=await fetchPage(0,PAGE);
     D=rows;TOTAL=total??rows.length;
-    $('#sync').textContent='Live · shared · build 09/22.1';
+    $('#sync').textContent='Live · shared · build 10/04.1';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
