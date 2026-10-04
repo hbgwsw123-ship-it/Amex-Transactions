@@ -17,7 +17,7 @@ function ds(x){if(!x)return'';let a=String(x).split('-');return a.length===3?a[1
 function av(x){if(x.availability_status==='NOT_ON_SALE')return '<span class="avail">'+(x.onsale_date?'On sale '+e(ds(x.onsale_date)):'Announced · on-sale TBD')+'</span>';if(x.availability_status==='PRESALE')return '<span class="avail">Presale'+(x.onsale_date?' · public '+e(ds(x.onsale_date)):'')+'</span>';return''}
 function pl(x){return ({P1:'🟢 Excellent',P2:'🔵 Good',P3:'🟡 Medium',P4:'🔴 Low'})[x]||x||''}
 function wk(x){let w=String(x.why_priority||'');return x.priority==='P1'||/(exact (history|product|series|artist|venue)|strong direct history|box office proof|box-office evidence|sold out|current exact event|nutcracker archetype)/i.test(w)}
-function evbadge(x){let w=String(x.why_priority||'');if(/current exact event/i.test(w))return '<span class="eb exact">Exact current event</span>';if(/exact venue/i.test(w))return '<span class="eb venue">Exact venue history</span>';if(/historical eligible|exact (history|historical|series|artist|product|sample)|direct history|visible exact order/i.test(w))return '<span class="eb exact">Exact / series history</span>';if(/category proof|comparable|archetype|touring broadway history|historical holiday cirque|category has worked|historically:/i.test(w))return '<span class="eb comp">Comparable / category</span>';if(/orders|profit/i.test(w))return '<span class="eb other">Historical evidence</span>';return ''}
+function evbadge(x){let w=String(x.why_priority||'');if(/external box-office evidence/i.test(w))return '<span class="eb other">External box office</span>';if(/current exact event/i.test(w))return '<span class="eb exact">Exact current event</span>';if(/exact venue|exact historical/i.test(w))return '<span class="eb venue">Exact venue history</span>';if(/series-wide .* history/i.test(w))return '<span class="eb other">Series-wide history</span>';if(/historical eligible ailey|exact (title|series|artist|product|sample)|direct history|visible exact order/i.test(w))return '<span class="eb exact">Exact / series history</span>';if(/category proof|comparable|archetype|touring broadway history|historical holiday cirque|category has worked|holiday cirque has been profitable/i.test(w))return '<span class="eb comp">Comparable / category</span>';if(/orders|profit|gross/i.test(w))return '<span class="eb other">Historical evidence</span>';return ''}
 function qval(t){return '"*'+String(t).replace(/["\\]/g,'\\$&')+'*"'}
 
 function buildParams(offset,limit){
@@ -66,7 +66,7 @@ async function resetAndLoad(){
   try{
     const {rows,total}=await fetchPage(0,PAGE);
     D=rows;TOTAL=total??rows.length;
-    $('#sync').textContent='Live · shared · build 10/04.5';
+    $('#sync').textContent='Live · shared · build 10/04.6';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
