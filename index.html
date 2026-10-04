@@ -65,7 +65,7 @@ async function resetAndLoad(){
   try{
     const {rows,total}=await fetchPage(0,PAGE);
     D=rows;TOTAL=total??rows.length;
-    $('#sync').textContent='Live · shared · build 10/04.3';
+    $('#sync').textContent='Live · shared · build 10/04.4';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
@@ -82,6 +82,7 @@ async function loadMore(){
 }
 
 function tag(x){return x.tag||''}
+function isPast(x){const s=String(x.performance_date||x.date_text||'').trim();let d;if(/^\d{4}-\d{2}-\d{2}$/.test(s)){const a=s.split('-').map(Number);d=new Date(a[0],a[1]-1,a[2])}else if(/^\d{2}\/\d{2}\/\d{2}$/.test(s)){const a=s.split('/').map(Number);d=new Date(2000+a[2],a[0]-1,a[1])}else{return false}const n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate());return d<t}
 const cg='<col class="c1"><col class="c2"><col class="c3"><col style="width:90px"><col class="c4"><col class="c5"><col class="c6"><col class="c7"><col class="c8">',hd='<thead><tr><th>Listed</th><th>Status</th><th>Date</th><th>Time</th><th>Event</th><th>Venue</th><th>Priority</th><th>Why Priority</th><th>Direct Primary Link</th></tr></thead>';
 function rowKey(x){return x.row_kind+':'+x.row_id}
 function row(x){
@@ -94,11 +95,12 @@ function row(x){
 function isTM(x){return /(^|\/\/)([^/]*\.)?ticketmaster\./i.test(String(x.primary_url||''))}
 function tbl(r){return '<table><colgroup>'+cg+'</colgroup>'+hd+'<tbody>'+r.map(row).join('')+'</tbody></table>'}
 function render(){
-  const direct=D.filter(x=>x.row_kind==='performance'&&x.direct_url_verified&&x.primary_url).length;
-  $('#cnt').textContent=D.length+' of '+TOTAL+' rows loaded · '+direct+' verified direct links';
-  if(!D.length){$('#c').innerHTML='<div class="empty">No matching events.</div>';return}
+  const V=D.filter(x=>!isPast(x));
+  const direct=V.filter(x=>x.row_kind==='performance'&&x.direct_url_verified&&x.primary_url).length;
+  $('#cnt').textContent=V.length+' current rows loaded · '+direct+' verified direct links';
+  if(!V.length){$('#c').innerHTML='<div class="empty">No matching current or upcoming events.</div>';return}
   const k=v==='venues'?'venue':'group_name',g=new Map();
-  D.forEach(x=>{let z=x[k]||'Uncategorized';if(!g.has(z))g.set(z,[]);g.get(z).push(x)});
+  V.forEach(x=>{let z=x[k]||'Uncategorized';if(!g.has(z))g.set(z,[]);g.get(z).push(x)});
   let html=[...g].map(([z,r])=>{
     let n=r.filter(x=>!isTM(x)),t=r.filter(isTM),key=v+'::'+z,open=TMOPEN.has(key);
     let nonTm=n.length?'<div class="sg">Non-Ticketmaster Primary Links · '+n.length+'</div>'+tbl(n):'';
