@@ -11,7 +11,7 @@
 <script>
 const SB='https://rpngmxrgjmcjzhgaoegq.supabase.co',FEED=SB+'/rest/v1/v_listing_feed',API=SB+'/rest/v1/listing_events',PAPI=SB+'/rest/v1/listing_performances',KEY='sb_publishable_EtA1OzLOhSraN9y8gKpp1g_hCZy8iCg',APPROVED='dunetickets@gmail.com';let TOKEN=sessionStorage.getItem('dl_token')||'';
 VEN=new Set(["BOSTON - SYMPHONY HALL","CHICAGO - SYMPHONY CTR","DENVER - BOETTCHER","JAX - JACOBY","NASHVILLE - SCHERMERHORN","NYC - CARNEGIE","NYC - GEFFEN","PHILA - ACADEMY","PHILA - MARIAN","PHILA - MET","PHX - ORPHEUM","PHX - SYMPHONY HALL","PITTSBURGH - BENEDUM","PITTSBURGH - HEINZ","PORTLAND - SCHNITZER","SALT LAKE - ECCLES","SEATTLE - BENAROYA","SF - DAVIES","STRATHMORE"]);
-const PAGE=150;let D=[],v='events',TOTAL=0,LOADING=false,SEARCHT=null,TMOPEN=new Set();
+const PAGE=150;let D=[],v='events',TOTAL=0,LOADING=false,SEARCHT=null,TMOPEN=new Set(),GOPEN=new Set();
 const $=s=>document.querySelector(s),e=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function ds(x){if(!x)return'';let a=String(x).split('-');return a.length===3?a[1]+'/'+a[2]+'/'+a[0].slice(2):x}
 function av(x){if(x.availability_status==='NOT_ON_SALE')return '<span class="avail">'+(x.onsale_date?'On sale '+e(ds(x.onsale_date)):'Announced · on-sale TBD')+'</span>';if(x.availability_status==='PRESALE')return '<span class="avail">Presale'+(x.onsale_date?' · public '+e(ds(x.onsale_date)):'')+'</span>';return''}
@@ -66,7 +66,7 @@ async function resetAndLoad(){
   try{
     const {rows,total}=await fetchPage(0,PAGE);
     D=rows;TOTAL=total??rows.length;
-    $('#sync').textContent='Live · shared · build 10/04.6';
+    $('#sync').textContent='Live · shared · build 10/04.7';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
@@ -103,11 +103,14 @@ function render(){
   const k=v==='venues'?'venue':'group_name',g=new Map();
   V.forEach(x=>{let z=x[k]||'Uncategorized';if(!g.has(z))g.set(z,[]);g.get(z).push(x)});
   let html=[...g].map(([z,r])=>{
-    let n=r.filter(x=>!isTM(x)),t=r.filter(isTM),key=v+'::'+z,open=TMOPEN.has(key);
+    let n=r.filter(x=>!isTM(x)),t=r.filter(isTM),key=v+'::'+z,groupOpen=GOPEN.has(key),tmOpen=TMOPEN.has(key);
+    let groupToggle='<button class="more group-toggle" data-groupkey="'+e(key)+'" style="margin-left:auto;padding:6px 10px;width:auto">'+(groupOpen?'Show Less':'Show More')+' ('+r.length+')</button>';
+    let head='<div class="gt" style="display:flex;align-items:center;gap:10px">'+e(z)+'<span style="font-weight:500;color:#687586">· '+r.length+'</span>'+groupToggle+'</div>';
+    if(!groupOpen)return '<section class="grp">'+head+'</section>';
     let nonTm=n.length?'<div class="sg">Non-Ticketmaster Primary Links · '+n.length+'</div>'+tbl(n):'';
-    let tmToggle=t.length?'<button class="more tm-toggle" data-tmkey="'+e(key)+'" style="margin:10px;width:calc(100% - 20px);padding:9px 12px">'+(open?'Hide':'Show')+' Ticketmaster Links ('+t.length+')</button>':'';
-    let tmSection=t.length&&open?'<div class="sg">Ticketmaster Links · '+t.length+'</div>'+tbl(t):'';
-    return '<section class="grp"><div class="gt">'+e(z)+' <span style="font-weight:500;color:#687586">· '+r.length+'</span></div>'+nonTm+tmToggle+tmSection+'</section>';
+    let tmToggle=t.length?'<button class="more tm-toggle" data-tmkey="'+e(key)+'" style="margin:10px;width:calc(100% - 20px);padding:9px 12px">'+(tmOpen?'Hide':'Show')+' Ticketmaster Links ('+t.length+')</button>':'';
+    let tmSection=t.length&&tmOpen?'<div class="sg">Ticketmaster Links · '+t.length+'</div>'+tbl(t):'';
+    return '<section class="grp">'+head+nonTm+tmToggle+tmSection+'</section>';
   }).join('');
   if(D.length<TOTAL){html+='<button class="more" id="more" '+(LOADING?'disabled':'')+'>'+(LOADING?'Loading…':'Load '+Math.min(PAGE,TOTAL-D.length)+' more (of '+(TOTAL-D.length)+' remaining)')+'</button>'}
   $('#c').innerHTML=html;
@@ -120,6 +123,7 @@ function bind(){
     tr.querySelector('[data-l]').onclick=()=>save(x,{listed:!x.listed});
     tr.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>clicktag(x,b.dataset.t));
   });
+  document.querySelectorAll('.group-toggle').forEach(b=>b.onclick=()=>{const k=b.dataset.groupkey;GOPEN.has(k)?GOPEN.delete(k):GOPEN.add(k);render()});
   document.querySelectorAll('.tm-toggle').forEach(b=>b.onclick=()=>{const k=b.dataset.tmkey;TMOPEN.has(k)?TMOPEN.delete(k):TMOPEN.add(k);render()});
   const more=$('#more');if(more)more.onclick=loadMore;
 }
