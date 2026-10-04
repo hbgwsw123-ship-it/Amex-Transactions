@@ -71,7 +71,7 @@ async function resetAndLoad(){
       if(!next.rows.length)break;
       D=D.concat(next.rows);
     }
-    $('#sync').textContent='Live · shared · build 10/04.9';
+    $('#sync').textContent='Live · shared · build 10/04.10';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
@@ -118,9 +118,23 @@ function groupCmp(a,b){
   return A[0]-B[0]||A[1]-B[1]||A[2]-B[2]||String(a[0]).localeCompare(String(b[0]));
 }
 function moneyShort(v){
-  const n=Number(v);if(!isFinite(n))return '—';
+  const n=Number(v);
+  if(!isFinite(n))return '—';
   const a=Math.abs(n);
-  if(a>=1000000)return '
+  if(a>=1000000)return '$'+(n/1000000).toFixed(1).replace(/\.0$/,'')+'m';
+  if(a>=1000)return '$'+(n/1000).toFixed(1).replace(/\.0$/,'')+'k';
+  return '$'+Math.round(n).toLocaleString();
+}
+function histKpi(r){
+  const x=r.find(z=>z.hist_orders!=null);
+  if(!x)return '<span class="hist-kpi hist-none">No exact historical sales</span>';
+  let s=Number(x.hist_orders).toLocaleString()+' hist sales · '+moneyShort(x.hist_profit)+' profit';
+  if(x.hist_profit_margin!=null)s+=' · '+(Number(x.hist_profit_margin)*100).toFixed(1)+'% margin';
+  else s+=' · margin —';
+  return '<span class="hist-kpi" title="'+e(x.hist_evidence_label||'Internal historical data')+'">'+e(s)+'</span>';
+}
+function seriesSummary(r){
+  const n=r.filter(x=>!isTM(x)),s=n.length?n:r;
   const counts={P1:0,P2:0,P3:0,P4:0};s.forEach(x=>{if(counts[x.priority]!=null)counts[x.priority]++});
   const scarce=s.filter(x=>x.so||x.iso).length;
   const bits=[];
@@ -137,7 +151,8 @@ function compactPick(x){
   return '<div class="series-pick"><div><span class="p '+e(x.priority)+'">'+e(pl(x.priority))+'</span></div><div class="sp-date">'+e(x.date_text||'')+'</div><div class="sp-event">'+e(x.event_name||'')+'</div><div class="sp-venue">'+e(x.venue||'')+(st?' <span class="sp-status">· '+st+'</span>':'')+'</div></div>';
 }
 function picksBlock(r){
-  const p=bestRows(r);return p.length?'<div class="series-picks">'+p.map(compactPick).join('')+'</div>':'';
+  const p=bestRows(r);
+  return p.length?'<div class="series-picks">'+p.map(compactPick).join('')+'</div>':'';
 }
 
 function tbl(r){return '<table><colgroup>'+cg+'</colgroup>'+hd+'<tbody>'+r.map(row).join('')+'</tbody></table>'}
