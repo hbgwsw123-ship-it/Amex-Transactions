@@ -5,7 +5,7 @@
 .more{display:block;width:100%;padding:12px;border:1px dashed #c9cfda;border-radius:9px;background:white;color:#566074;font-weight:650;cursor:pointer;margin-bottom:14px}.more:hover{border-color:var(--accent);color:var(--accent)}.more:disabled{opacity:.5;cursor:default}
 .series-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 10px 6px}.series-stat{font-size:10px;color:#667085;font-weight:650}.series-picks{margin:4px 10px 10px;border-top:1px solid #edf0f5}.series-pick{display:grid;grid-template-columns:105px 120px 1fr 1fr;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid #f1f3f5;font-size:11px}.series-pick:last-child{border-bottom:0}.series-pick .sp-event{font-weight:700;color:#20263a}.series-pick .sp-venue{color:#667085;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.series-pick .sp-date{color:#4b5565;font-weight:650}.series-pick .sp-status{font-size:9px;font-weight:800;color:#8a6116}.group-toggle{flex:0 0 auto}.gt .series-title{font-weight:750}.gt .series-count{font-weight:500;color:#687586}.hist-kpis{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap}.hist-type{display:flex;align-items:center;padding:0 7px;border-radius:7px;font-size:8px;font-weight:850;letter-spacing:.05em;text-transform:uppercase;border:1px solid #dfe3e8;background:#fff;color:#667085}.hist-type.comp{background:#fff8e6;color:#8a6116;border-color:#f2dfa8}.hist-type.artist{background:#eef4ff;color:#2457a6;border-color:#d5e2ff}.hist-box{min-width:78px;padding:5px 8px;border:1px solid #e4e7ec;border-radius:7px;background:#f8fafc;line-height:1.15}.hist-label{display:block;font-size:7px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#98a2b3;margin-bottom:2px}.hist-value{display:block;font-size:11px;font-weight:800;color:#344054;white-space:nowrap}.hist-box.profit .hist-value{color:#18794e}.hist-box.margin .hist-value{color:#2457a6}.hist-none{font-size:9px;font-weight:700;color:#98a2b3;background:#fafafa;border:1px solid #eceff3;border-radius:7px;padding:6px 9px;white-space:nowrap}.bulkbar{display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1px solid #cfd7e3;border-radius:10px;box-shadow:0 8px 28px rgba(16,24,40,.18);min-width:460px}.bulkbar.on{display:flex}.bulk-count{font-size:12px;font-weight:800;color:#344054;margin-right:4px;white-space:nowrap}.bulkbtn{border:1px solid #d0d5dd;background:#fff;color:#344054;border-radius:7px;padding:9px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}.bulkbtn.tm{background:#175cd3;border-color:#175cd3;color:#fff}.bulkbtn.tm:hover{background:#1849a9}.bulkbtn.clear{margin-left:auto;color:#667085}.selbox{width:14px;height:14px;cursor:pointer}.selcol{width:28px;text-align:center}.coverage{font-size:10px;font-weight:850;border:1px solid #d0d5dd;border-radius:999px;padding:6px 9px;white-space:nowrap;background:#fff;color:#475467;cursor:default}.coverage.ok{background:#ecfdf3;border-color:#abefc6;color:#067647}.coverage.warn{background:#fff6ed;border-color:#fedf89;color:#b54708}.coverage.bad{background:#fef3f2;border-color:#fecdca;color:#b42318}@media(max-width:900px){.wrap{padding:12px}.toolbar input{min-width:100%}.grp,.flat{overflow-x:auto}table{min-width:1320px}.series-pick{grid-template-columns:90px 100px minmax(180px,1fr)}}
 </style></head><body><div id="login" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px"><div style="width:min(420px,100%);background:white;border:1px solid #dce2e8;border-radius:10px;padding:24px"><h1 style="color:#172536;margin-bottom:4px">Dune Listings</h1><div style="color:#687586;margin-bottom:18px">Private access</div><input id="email" type="email" value="dunetickets@gmail.com" style="width:100%;padding:10px;border:1px solid #dce2e8;border-radius:6px;margin-bottom:8px"><input id="password" type="password" placeholder="Password" style="width:100%;padding:10px;border:1px solid #dce2e8;border-radius:6px;margin-bottom:10px"><button id="loginbtn" style="width:100%;padding:10px;border:0;border-radius:6px;background:#172536;color:white;font-weight:700;cursor:pointer">Sign in</button><button id="signupbtn" style="display:none;width:100%;padding:10px;border:1px solid #dce2e8;border-radius:6px;background:white;margin-top:8px;font-weight:700;cursor:pointer">Create first-time account</button><div id="authmsg" style="margin-top:10px;color:#687586;font-size:12px"></div></div></div><div id="app" style="display:none"><header><div><h1>Dune Listings</h1><div class="sub">Shared event-listing workflow</div></div><div style="display:flex;gap:10px;align-items:center"><div class="sync" id="sync">Loading…</div><button id="logout" style="border:1px solid #dde2ea;background:white;color:#566074;border-radius:6px;padding:5px 8px;cursor:pointer">Sign out</button></div></header><div class="wrap">
-<div class="tabs"><button data-v="events" class="on">Events</button><button data-v="venues">Venues</button><button data-v="SO">Sold Out <span data-count="SO"></span></button><button data-v="ISO">ISO <span data-count="ISO"></span></button><button data-v="NS">NS <span data-count="NS"></span></button></div>
+<div class="tabs"><button data-v="events" class="on">Events</button><button data-v="venues">Venues</button><button data-v="comparables">Comparables</button><button data-v="SO">Sold Out <span data-count="SO"></span></button><button data-v="ISO">ISO <span data-count="ISO"></span></button><button data-v="NS">NS <span data-count="NS"></span></button></div>
 <div class="toolbar"><input id="q" placeholder="Search event, venue, city…"><select id="lf"><option value="all">All listing status</option><option value="unlisted">Not listed</option><option value="listed">Listed</option></select><div class="pri"><span>Priority</span><label><input type="checkbox" name="pri" value="P1">🟢 Excellent</label><label><input type="checkbox" name="pri" value="P2">🔵 Good</label><label><input type="checkbox" name="pri" value="P3">🟡 Medium</label><label><input type="checkbox" name="pri" value="P4">🔴 Low</label></div><div id="coverage" class="coverage">Coverage…</div><div id="cnt" class="cnt"></div></div><div id="bulk" class="bulkbar"><span id="bulkCount" class="bulk-count">0 selected</span><button id="markTm" class="bulkbtn tm">Move Selected to Ticketmaster</button><button id="unmarkTm" class="bulkbtn">Move to Non-TM</button><button id="clearSel" class="bulkbtn clear">Clear</button></div><div id="c"></div></div>
 
 <script>
@@ -22,8 +22,9 @@ function usefulWhy(x){
   const hp=Number(x.hist_profit)||0,ho=Number(x.hist_orders)||0,vp=Number(x.venue_hist_profit)||0,vo=Number(x.venue_hist_orders)||0,vd=Number(x.venue_hist_event_dates)||0;
   const label=String(x.hist_evidence_label||'').toLowerCase();
   if(ho||hp){
-    if(label.includes('comparable'))bits.push('No direct production history. Comparable category only: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
-    else if(label.includes('artist')||label.includes('company'))bits.push('Artist/company history: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
+    if(label.includes('comparable')){
+      if(v==='comparables')bits.push('Comparable category only: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
+    } else if(label.includes('artist')||label.includes('company'))bits.push('Artist/company history: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
     else bits.push('Production history: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
   }
   if(vo||vp)bits.push('Venue history: '+vo.toLocaleString()+' orders / '+moneyShort(vp)+' profit'+(vd?' across '+vd.toLocaleString()+' event dates':''));
@@ -32,7 +33,7 @@ function usefulWhy(x){
 }
 function evbadge(x){
   const l=String(x.hist_evidence_label||'').toLowerCase(),w=String(x.why_priority||'');
-  if(l.includes('comparable'))return '<span class="eb comp">Comparable / category</span>';
+  if(l.includes('comparable'))return v==='comparables'?'<span class="eb comp">Comparable / category</span>':'';
   if(l.includes('artist')||l.includes('company'))return '<span class="eb other">Artist / company history</span>';
   if(l && (x.hist_orders!=null||x.hist_profit!=null))return '<span class="eb exact">Exact / series history</span>';
   if(/external box-office evidence/i.test(w))return '<span class="eb other">External box office</span>';
@@ -49,7 +50,13 @@ function buildParams(offset,limit){
   p.set('order','listed.asc,priority.asc,event_sort_index.asc,perf_sort_index.asc');
   p.set('limit',limit);p.set('offset',offset);
   if(v==='venues'){
+    p.set('source_tab','in.('+[...VEN].map(x=>'"'+x.replace(/["\\]/g,'\\  if(v==='venues'){
     p.set('source_tab','in.('+[...VEN].map(x=>'"'+x.replace(/["\\]/g,'\\$&')+'"').join(',')+')');
+  } else if(['SO','ISO','NS'].includes(v)){
+    p.set('tag','eq.'+v);
+  }')+'"').join(',')+')');
+  } else if(v==='comparables'){
+    p.set('hist_evidence_label','ilike.*Comparable*');
   } else if(['SO','ISO','NS'].includes(v)){
     p.set('tag','eq.'+v);
   }
@@ -131,7 +138,7 @@ async function resetAndLoad(){
       if(!next.rows.length)break;
       D=D.concat(next.rows);
     }
-    $('#sync').textContent='Live · shared · build 10/05.6';
+    $('#sync').textContent='Live · shared · build 10/05.7';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
@@ -188,7 +195,7 @@ function bestRows(r){
 function histConfidence(x){
   const l=String(x.hist_evidence_label||'').toLowerCase();
   if(!x.hist_orders && !x.hist_profit)return 0;
-  if(l.includes('comparable'))return .25;
+  if(l.includes('comparable'))return v==='comparables'?.25:0;
   if(l.includes('artist')||l.includes('company'))return .80;
   return 1;
 }
@@ -222,6 +229,7 @@ function histKpi(r){
   const margin=x.hist_profit_margin!=null?(Number(x.hist_profit_margin)*100).toFixed(1)+'%':'—';
   const label=String(x.hist_evidence_label||'Internal history');
   const isComp=/comparable/i.test(label),isArtist=/artist|company/i.test(label);
+  if(isComp && v!=='comparables')return '<span class="hist-none">No direct production history</span>';
   const type=isComp?'Comparable only':isArtist?'Artist / Company':'Exact';
   const cls=isComp?' comp':isArtist?' artist':'';
   const ordersLabel=isComp?'Comp Orders':'Hist Orders';
@@ -263,12 +271,12 @@ function render(){
   const k=v==='venues'?'venue':'family_name',g=new Map();
   V.forEach(x=>{let z=x[k]||x.group_name||'Uncategorized';if(!g.has(z))g.set(z,[]);g.get(z).push(x)});
   const groups=[...g];
-  if(v==='events')groups.sort(groupCmp);
+  if(v==='events'||v==='comparables')groups.sort(groupCmp);
   let html=groups.map(([z,r])=>{
     let n=r.filter(x=>!isTM(x)),t=r.filter(isTM),key=v+'::'+z,groupOpen=GOPEN.has(key),tmOpen=TMOPEN.has(key);
     let groupToggle='<button class="more group-toggle" data-groupkey="'+e(key)+'" style="margin-left:auto;padding:6px 10px;width:auto">'+(groupOpen?'Show Less':'Show More')+' ('+r.length+')</button>';
-    let head='<div class="gt" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="series-title">'+e(z)+'</span><span class="series-count">· '+r.length+'</span>'+(v==='events'?histKpi(r):'')+groupToggle+'</div>';
-    if(!groupOpen)return '<section class="grp">'+head+(v==='events'?seriesSummary(r)+picksBlock(r):'')+'</section>';
+    let head='<div class="gt" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="series-title">'+e(z)+'</span><span class="series-count">· '+r.length+'</span>'+((v==='events'||v==='comparables')?histKpi(r):'')+groupToggle+'</div>';
+    if(!groupOpen)return '<section class="grp">'+head+((v==='events'||v==='comparables')?seriesSummary(r)+picksBlock(r):'')+'</section>';
     let nonTm=n.length?'<div class="sg">Non-Ticketmaster Primary Links · '+n.length+'</div>'+tbl(n):'';
     let tmToggle=t.length?'<button class="more tm-toggle" data-tmkey="'+e(key)+'" style="margin:10px;width:calc(100% - 20px);padding:9px 12px">'+(tmOpen?'Hide':'Show')+' Ticketmaster Links ('+t.length+')</button>':'';
     let tmSection=t.length&&tmOpen?'<div class="sg">Ticketmaster Links · '+t.length+'</div>'+tbl(t):'';
