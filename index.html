@@ -22,7 +22,7 @@ function usefulWhy(x){
   const hp=Number(x.hist_profit)||0,ho=Number(x.hist_orders)||0,vp=Number(x.venue_hist_profit)||0,vo=Number(x.venue_hist_orders)||0,vd=Number(x.venue_hist_event_dates)||0;
   const label=String(x.hist_evidence_label||'').toLowerCase();
   if(ho||hp){
-    if(label.includes('comparable'))bits.push('Comparable category: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
+    if(label.includes('comparable'))bits.push('No direct production history. Comparable category only: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
     else if(label.includes('artist')||label.includes('company'))bits.push('Artist/company history: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
     else bits.push('Production history: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
   }
@@ -30,7 +30,17 @@ function usefulWhy(x){
   if(bits.length)return bits.join('. ')+'.';
   return String(x.why_priority||'');
 }
-function evbadge(x){let w=String(x.why_priority||'');if(/external box-office evidence/i.test(w))return '<span class="eb other">External box office</span>';if(/current exact event/i.test(w))return '<span class="eb exact">Exact current event</span>';if(/exact venue|exact historical/i.test(w))return '<span class="eb venue">Exact venue history</span>';if(/series-wide .* history/i.test(w))return '<span class="eb other">Series-wide history</span>';if(/historical eligible ailey|exact (title|series|artist|product|sample)|direct history|visible exact order/i.test(w))return '<span class="eb exact">Exact / series history</span>';if(/category proof|comparable|archetype|touring broadway history|historical holiday cirque|category has worked|holiday cirque has been profitable/i.test(w))return '<span class="eb comp">Comparable / category</span>';if(/orders|profit|gross/i.test(w))return '<span class="eb other">Historical evidence</span>';return ''}
+function evbadge(x){
+  const l=String(x.hist_evidence_label||'').toLowerCase(),w=String(x.why_priority||'');
+  if(l.includes('comparable'))return '<span class="eb comp">Comparable / category</span>';
+  if(l.includes('artist')||l.includes('company'))return '<span class="eb other">Artist / company history</span>';
+  if(l && (x.hist_orders!=null||x.hist_profit!=null))return '<span class="eb exact">Exact / series history</span>';
+  if(/external box-office evidence/i.test(w))return '<span class="eb other">External box office</span>';
+  if(/current exact event/i.test(w))return '<span class="eb exact">Exact current event</span>';
+  if(/exact venue|exact historical/i.test(w))return '<span class="eb venue">Exact venue history</span>';
+  if(/category proof|comparable|archetype|touring broadway history/i.test(w))return '<span class="eb comp">Comparable / category</span>';
+  return '';
+}
 function qval(t){return '"*'+String(t).replace(/["\\]/g,'\\$&')+'*"'}
 
 function buildParams(offset,limit){
@@ -121,7 +131,7 @@ async function resetAndLoad(){
       if(!next.rows.length)break;
       D=D.concat(next.rows);
     }
-    $('#sync').textContent='Live · shared · build 10/05.5';
+    $('#sync').textContent='Live · shared · build 10/05.6';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
@@ -206,18 +216,20 @@ function moneyShort(v){
 }
 function histKpi(r){
   const x=r.find(z=>z.hist_orders!=null);
-  if(!x)return '<span class="hist-none">No direct or comparable history found</span>';
-  const sales=Number(x.hist_orders).toLocaleString();
+  if(!x)return '<span class="hist-none">No direct history found</span>';
+  const orders=Number(x.hist_orders).toLocaleString();
   const profit=moneyShort(x.hist_profit);
   const margin=x.hist_profit_margin!=null?(Number(x.hist_profit_margin)*100).toFixed(1)+'%':'—';
   const label=String(x.hist_evidence_label||'Internal history');
   const isComp=/comparable/i.test(label),isArtist=/artist|company/i.test(label);
-  const type=isComp?'Comparable':isArtist?'Artist / Company':'Exact';
+  const type=isComp?'Comparable only':isArtist?'Artist / Company':'Exact';
   const cls=isComp?' comp':isArtist?' artist':'';
+  const ordersLabel=isComp?'Comp Orders':'Hist Orders';
+  const profitLabel=isComp?'Comp Profit':'Hist Profit';
   return '<span class="hist-kpis" title="'+e(label)+'">'
     +'<span class="hist-type'+cls+'">'+e(type)+'</span>'
-    +'<span class="hist-box"><span class="hist-label">Hist Sales</span><span class="hist-value">'+e(sales)+'</span></span>'
-    +'<span class="hist-box profit"><span class="hist-label">Profit</span><span class="hist-value">'+e(profit)+'</span></span>'
+    +'<span class="hist-box"><span class="hist-label">'+ordersLabel+'</span><span class="hist-value">'+e(orders)+'</span></span>'
+    +'<span class="hist-box profit"><span class="hist-label">'+profitLabel+'</span><span class="hist-value">'+e(profit)+'</span></span>'
     +'<span class="hist-box margin"><span class="hist-label">Margin</span><span class="hist-value">'+e(margin)+'</span></span>'
     +'</span>';
 }
