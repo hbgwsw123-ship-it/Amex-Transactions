@@ -178,7 +178,7 @@ async function resetAndLoad(){
         const r=await apiFetch(DISC+'?select=*&discovery_kind=eq.new_event&acknowledged_at=is.null&order=discovered_at.desc',{headers:{Prefer:'count=exact'}});
         if(!r.ok)throw Error('admin discovery fetch failed '+r.status);
         D=await r.json();TOTAL=parseTotal(r.headers)??D.length;
-        $('#sync').textContent='Live · shared · build 10/05.17';
+        $('#sync').textContent='Live · shared · build 10/05.18';
         renderNewEvents();
         refreshNewEventsCount();
         return;
@@ -191,7 +191,7 @@ async function resetAndLoad(){
       if(!next.rows.length)break;
       D=D.concat(next.rows);
     }
-    $('#sync').textContent='Live · shared · build 10/05.17';
+    $('#sync').textContent='Live · shared · build 10/05.18';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
