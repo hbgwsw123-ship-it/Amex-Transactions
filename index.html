@@ -17,6 +17,19 @@ function ds(x){if(!x)return'';let a=String(x).split('-');return a.length===3?a[1
 function av(x){if(x.availability_status==='NOT_ON_SALE')return '<span class="avail">'+(x.onsale_date?'On sale '+e(ds(x.onsale_date)):'Announced · on-sale TBD')+'</span>';if(x.availability_status==='PRESALE')return '<span class="avail">Presale'+(x.onsale_date?' · public '+e(ds(x.onsale_date)):'')+'</span>';return''}
 function pl(x){return ({P1:'🟢 Excellent',P2:'🔵 Good',P3:'🟡 Medium',P4:'🔴 Low'})[x]||x||''}
 function wk(x){let w=String(x.why_priority||'');return x.priority==='P1'||/(exact (history|product|series|artist|venue)|strong direct history|box office proof|box-office evidence|sold out|current exact event|nutcracker archetype)/i.test(w)}
+function usefulWhy(x){
+  const bits=[];
+  const hp=Number(x.hist_profit)||0,ho=Number(x.hist_orders)||0,vp=Number(x.venue_hist_profit)||0,vo=Number(x.venue_hist_orders)||0,vd=Number(x.venue_hist_event_dates)||0;
+  const label=String(x.hist_evidence_label||'').toLowerCase();
+  if(ho||hp){
+    if(label.includes('comparable'))bits.push('Comparable category: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
+    else if(label.includes('artist')||label.includes('company'))bits.push('Artist/company history: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
+    else bits.push('Production history: '+ho.toLocaleString()+' orders / '+moneyShort(hp)+' profit');
+  }
+  if(vo||vp)bits.push('Venue history: '+vo.toLocaleString()+' orders / '+moneyShort(vp)+' profit'+(vd?' across '+vd.toLocaleString()+' event dates':''));
+  if(bits.length)return bits.join('. ')+'.';
+  return String(x.why_priority||'');
+}
 function evbadge(x){let w=String(x.why_priority||'');if(/external box-office evidence/i.test(w))return '<span class="eb other">External box office</span>';if(/current exact event/i.test(w))return '<span class="eb exact">Exact current event</span>';if(/exact venue|exact historical/i.test(w))return '<span class="eb venue">Exact venue history</span>';if(/series-wide .* history/i.test(w))return '<span class="eb other">Series-wide history</span>';if(/historical eligible ailey|exact (title|series|artist|product|sample)|direct history|visible exact order/i.test(w))return '<span class="eb exact">Exact / series history</span>';if(/category proof|comparable|archetype|touring broadway history|historical holiday cirque|category has worked|holiday cirque has been profitable/i.test(w))return '<span class="eb comp">Comparable / category</span>';if(/orders|profit|gross/i.test(w))return '<span class="eb other">Historical evidence</span>';return ''}
 function qval(t){return '"*'+String(t).replace(/["\\]/g,'\\$&')+'*"'}
 
@@ -108,7 +121,7 @@ async function resetAndLoad(){
       if(!next.rows.length)break;
       D=D.concat(next.rows);
     }
-    $('#sync').textContent='Live · shared · build 10/05.4';
+    $('#sync').textContent='Live · shared · build 10/05.5';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
@@ -135,10 +148,26 @@ function row(x){
   const link=x.primary_url?'<a class="url" '+(verified?'style="font-weight:800" ':'')+'target="_blank" rel="noopener" href="'+e(x.primary_url)+'">'+e(x.primary_url)+'</a>':'<span class="src">Exact link pending</span>';
   const timeCell=isPerf?('<b>'+e(x.time_text||'—')+'</b>'):'—';
   const rk=rowKey(x),checked=SEL.has(rk)?' checked':'';
-  return '<tr data-key="'+e(rk)+'"><td class="selcol"><input class="selbox row-select" type="checkbox" data-select'+checked+'></td><td><button class="li '+(x.listed?'on':'')+'" data-l>'+(x.listed?'✓ Listed':'Listed')+'</button></td><td><div class="cs">'+['SO','ISO','NS'].map(z=>'<button class="st '+(t===z?'on':'')+'" data-t="'+z+'">'+z+'</button>').join('')+'</div></td><td>'+e(x.date_text)+'</td><td>'+timeCell+'</td><td class="ev">'+e(x.event_name)+'</td><td>'+e(x.venue)+'</td><td><span class="p '+e(x.priority)+'">'+e(pl(x.priority))+'</span></td><td class="why '+(wk(x)?'key':'')+'">'+evbadge(x)+e(x.why_priority)+'</td><td>'+link+av(x)+'</td></tr>';
+  return '<tr data-key="'+e(rk)+'"><td class="selcol"><input class="selbox row-select" type="checkbox" data-select'+checked+'></td><td><button class="li '+(x.listed?'on':'')+'" data-l>'+(x.listed?'✓ Listed':'Listed')+'</button></td><td><div class="cs">'+['SO','ISO','NS'].map(z=>'<button class="st '+(t===z?'on':'')+'" data-t="'+z+'">'+z+'</button>').join('')+'</div></td><td>'+e(x.date_text)+'</td><td>'+timeCell+'</td><td class="ev">'+e(x.event_name)+'</td><td>'+e(x.venue)+'</td><td><span class="p '+e(effectivePriority(x))+'">'+e(pl(effectivePriority(x)))+'</span></td><td class="why '+(wk(x)?'key':'')+'">'+evbadge(x)+e(usefulWhy(x))+'</td><td>'+link+av(x)+'</td></tr>';
 }
 function isTM(x){return !!x.ticketmaster_override||/(^|\/\/)([^/]*\.)?ticketmaster\./i.test(String(x.primary_url||''))}
-function priN(x){return ({P1:1,P2:2,P3:3,P4:4})[x.priority]||9}
+function effectivePriority(x){
+  const raw=String(x.priority||'P4');
+  const label=String(x.hist_evidence_label||'').toLowerCase();
+  const hp=Number(x.hist_profit)||0, vp=Number(x.venue_hist_profit)||0, ho=Number(x.hist_orders)||0;
+  const comparable=label.includes('comparable');
+  const indirect=label.includes('artist')||label.includes('company');
+  let econ='P4';
+  if(!comparable && !indirect && hp>=10000 && vp>=5000)econ='P1';
+  else if(!comparable && hp>=10000)econ='P2';
+  else if(!comparable && hp>=5000 && vp>=3000)econ='P2';
+  else if(indirect && hp>=10000 && vp>=5000)econ='P2';
+  else if(vp>=10000 && ho>0)econ='P2';
+  else if(hp>=2500 || vp>=5000)econ='P3';
+  const n={P1:1,P2:2,P3:3,P4:4};
+  return n[econ]<n[raw]?econ:raw;
+}
+function priN(x){return ({P1:1,P2:2,P3:3,P4:4})[effectivePriority(x)]||9}
 function scarcityN(x){return x.so?0:x.iso?1:x.ns?3:2}
 function dateN(x){const s=String(x.performance_date||x.date_text||'');const d=new Date(s);return isNaN(d)?Number.MAX_SAFE_INTEGER:d.getTime()}
 function bestRows(r){
@@ -194,7 +223,7 @@ function histKpi(r){
 }
 function seriesSummary(r){
   const n=r.filter(x=>!isTM(x)),s=n.length?n:r;
-  const counts={P1:0,P2:0,P3:0,P4:0};s.forEach(x=>{if(counts[x.priority]!=null)counts[x.priority]++});
+  const counts={P1:0,P2:0,P3:0,P4:0};s.forEach(x=>{const p=effectivePriority(x);if(counts[p]!=null)counts[p]++});
   const scarce=s.filter(x=>x.so||x.iso).length;
   const bits=[];
   if(counts.P1)bits.push('🟢 '+counts.P1+' Excellent');
@@ -207,7 +236,7 @@ function seriesSummary(r){
 }
 function compactPick(x){
   const st=x.so?'SO':x.iso?'ISO':'';
-  return '<div class="series-pick"><div><span class="p '+e(x.priority)+'">'+e(pl(x.priority))+'</span></div><div class="sp-date">'+e(x.date_text||'')+'</div><div class="sp-event">'+e(x.event_name||'')+'</div><div class="sp-venue">'+e(x.venue||'')+(st?' <span class="sp-status">· '+st+'</span>':'')+'</div></div>';
+  return '<div class="series-pick"><div><span class="p '+e(effectivePriority(x))+'">'+e(pl(effectivePriority(x)))+'</span></div><div class="sp-date">'+e(x.date_text||'')+'</div><div class="sp-event">'+e(x.event_name||'')+'</div><div class="sp-venue">'+e(x.venue||'')+(st?' <span class="sp-status">· '+st+'</span>':'')+'</div></div>';
 }
 function picksBlock(r){
   const p=bestRows(r);return p.length?'<div class="series-picks">'+p.map(compactPick).join('')+'</div>':'';
