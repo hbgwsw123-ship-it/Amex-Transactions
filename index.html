@@ -138,7 +138,7 @@ async function resetAndLoad(){
       if(!next.rows.length)break;
       D=D.concat(next.rows);
     }
-    $('#sync').textContent='Live · shared · build 10/05.7';
+    $('#sync').textContent='Live · shared · build 10/05.8';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
@@ -195,7 +195,7 @@ function bestRows(r){
 function histConfidence(x){
   const l=String(x.hist_evidence_label||'').toLowerCase();
   if(!x.hist_orders && !x.hist_profit)return 0;
-  if(l.includes('comparable'))return v==='comparables'?.25:0;
+  if(l.includes('comparable'))return v==='comparables' ? .25 : 0;
   if(l.includes('artist')||l.includes('company'))return .80;
   return 1;
 }
