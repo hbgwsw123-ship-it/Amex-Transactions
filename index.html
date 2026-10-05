@@ -9,7 +9,7 @@
 <div class="toolbar"><input id="q" placeholder="Search event, venue, city…"><select id="lf"><option value="all">All listing status</option><option value="unlisted">Not listed</option><option value="listed">Listed</option></select><div class="pri"><span>Priority</span><label><input type="checkbox" name="pri" value="P1">🟢 Excellent</label><label><input type="checkbox" name="pri" value="P2">🔵 Good</label><label><input type="checkbox" name="pri" value="P3">🟡 Medium</label><label><input type="checkbox" name="pri" value="P4">🔴 Low</label></div><div id="cnt" class="cnt"></div></div><div id="c"></div></div>
 
 <script>
-const SB='https://rpngmxrgjmcjzhgaoegq.supabase.co',FEED=SB+'/rest/v1/v_listing_feed',API=SB+'/rest/v1/listing_events',PAPI=SB+'/rest/v1/listing_performances',KEY='sb_publishable_EtA1OzLOhSraN9y8gKpp1g_hCZy8iCg',APPROVED='dunetickets@gmail.com';let TOKEN=sessionStorage.getItem('dl_token')||'';
+const SB='https://rpngmxrgjmcjzhgaoegq.supabase.co',FEED=SB+'/rest/v1/v_listing_feed',API=SB+'/rest/v1/listing_events',PAPI=SB+'/rest/v1/listing_performances',KEY='sb_publishable_EtA1OzLOhSraN9y8gKpp1g_hCZy8iCg',APPROVED='dunetickets@gmail.com';let TOKEN=sessionStorage.getItem('dl_token')||'',REFRESH=sessionStorage.getItem('dl_refresh')||'';
 VEN=new Set(["BOSTON - SYMPHONY HALL","CHICAGO - SYMPHONY CTR","DENVER - BOETTCHER","JAX - JACOBY","NASHVILLE - SCHERMERHORN","NYC - CARNEGIE","NYC - GEFFEN","PHILA - ACADEMY","PHILA - MARIAN","PHILA - MET","PHX - ORPHEUM","PHX - SYMPHONY HALL","PITTSBURGH - BENEDUM","PITTSBURGH - HEINZ","PORTLAND - SCHNITZER","SALT LAKE - ECCLES","SEATTLE - BENAROYA","SF - DAVIES","STRATHMORE"]);
 const PAGE=1000;let D=[],v='events',TOTAL=0,LOADING=false,SEARCHT=null,TMOPEN=new Set(),GOPEN=new Set();
 const $=s=>document.querySelector(s),e=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -39,18 +39,40 @@ function buildParams(offset,limit){
   return p;
 }
 function parseTotal(h){const cr=h.get('content-range');if(!cr)return null;const m=/\/(\d+|\*)$/.exec(cr);return m&&m[1]!=='*'?+m[1]:null}
+async function refreshSession(){
+  if(!REFRESH)return false;
+  const r=await fetch(SB+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:REFRESH})});
+  if(!r.ok)return false;
+  const d=await r.json();
+  if(!d.access_token)return false;
+  TOKEN=d.access_token;REFRESH=d.refresh_token||REFRESH;
+  sessionStorage.setItem('dl_token',TOKEN);sessionStorage.setItem('dl_refresh',REFRESH);
+  return true;
+}
+function clearSession(){
+  TOKEN='';REFRESH='';
+  sessionStorage.removeItem('dl_token');sessionStorage.removeItem('dl_refresh');
+}
+async function apiFetch(url,opts={}){
+  const headers={...(opts.headers||{}),apikey:KEY,Authorization:'Bearer '+TOKEN};
+  let r=await fetch(url,{...opts,headers});
+  if(r.status===401&&await refreshSession()){
+    const retryHeaders={...(opts.headers||{}),apikey:KEY,Authorization:'Bearer '+TOKEN};
+    r=await fetch(url,{...opts,headers:retryHeaders});
+  }
+  if(r.status===401&&!REFRESH){clearSession();}
+  return r;
+}
 
 async function fetchPage(offset,limit){
-  const h={apikey:KEY,Authorization:'Bearer '+TOKEN,Prefer:'count=exact'};
-  const r=await fetch(FEED+'?'+buildParams(offset,limit).toString(),{headers:h});
+  const r=await apiFetch(FEED+'?'+buildParams(offset,limit).toString(),{headers:{Prefer:'count=exact'}});
   if(!r.ok)throw Error('fetch failed '+r.status);
   const rows=await r.json();
   const total=parseTotal(r.headers);
   return {rows,total};
 }
 async function tabCount(tag){
-  const h={apikey:KEY,Authorization:'Bearer '+TOKEN,Prefer:'count=exact'};
-  const r=await fetch(FEED+'?select=row_id&tag=eq.'+tag+'&limit=1',{headers:h});
+  const r=await apiFetch(FEED+'?select=row_id&tag=eq.'+tag+'&limit=1',{headers:{Prefer:'count=exact'}});
   if(!r.ok)return 0;
   return parseTotal(r.headers)||0;
 }
@@ -71,7 +93,7 @@ async function resetAndLoad(){
       if(!next.rows.length)break;
       D=D.concat(next.rows);
     }
-    $('#sync').textContent='Live · shared · build 10/04.12';
+    $('#sync').textContent='Live · shared · build 10/04.13';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
@@ -193,7 +215,7 @@ async function save(x,p){
   const tr=document.querySelector('tr[data-key="'+CSS.escape(rowKey(x))+'"]');if(tr)tr.classList.add('saving');
   const target=x.row_kind==='performance'?PAPI:API;
   const id=x.row_kind==='performance'?x.performance_id:x.event_id;
-  const r=await fetch(target+'?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+TOKEN,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({...p,updated_at:new Date().toISOString()})});
+  const r=await apiFetch(target+'?id=eq.'+id,{method:'PATCH',headers:{'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({...p,updated_at:new Date().toISOString()})});
   if(!r.ok){alert('Could not save.');render();return}
   const a=await r.json();Object.assign(x,a[0]||p);
   if('so' in p||'iso' in p||'ns' in p){x.tag=x.so?'SO':x.iso?'ISO':x.ns?'NS':'';refreshTabCounts()}
@@ -207,7 +229,7 @@ $('#q').addEventListener('input',()=>{clearTimeout(SEARCHT);SEARCHT=setTimeout(r
 $('#lf').addEventListener('change',resetAndLoad);
 document.querySelectorAll('input[name="pri"]').forEach(x=>x.addEventListener('change',resetAndLoad));
 
-async function auth(mode){const email=$('#email').value.trim().toLowerCase(),password=$('#password').value;if(email!==APPROVED){$('#authmsg').textContent='This email is not authorized.';return}$('#authmsg').textContent=mode==='signup'?'Creating account…':'Signing in…';const path=mode==='signup'?'/auth/v1/signup':'/auth/v1/token?grant_type=password';const r=await fetch(SB+path,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});const d=await r.json();if(!r.ok){$('#authmsg').textContent=d.msg||d.error_description||d.message||'Sign-in failed.';if(mode==='login')$('#signupbtn').style.display='block';return}if(!d.access_token){$('#authmsg').textContent='Account created. Check the email inbox for a confirmation link, then sign in.';$('#signupbtn').style.display='none';return}TOKEN=d.access_token;sessionStorage.setItem('dl_token',TOKEN);$('#login').style.display='none';$('#app').style.display='block';resetAndLoad();refreshTabCounts()}
-$('#loginbtn').onclick=()=>auth('login');$('#signupbtn').onclick=()=>auth('signup');$('#password').addEventListener('keydown',e=>{if(e.key==='Enter')auth('login')});$('#logout').onclick=()=>{sessionStorage.removeItem('dl_token');TOKEN='';location.reload()};
-if(TOKEN){$('#login').style.display='none';$('#app').style.display='block';resetAndLoad().catch(()=>{sessionStorage.removeItem('dl_token');location.reload()});refreshTabCounts()}
+async function auth(mode){const email=$('#email').value.trim().toLowerCase(),password=$('#password').value;if(email!==APPROVED){$('#authmsg').textContent='This email is not authorized.';return}$('#authmsg').textContent=mode==='signup'?'Creating account…':'Signing in…';const path=mode==='signup'?'/auth/v1/signup':'/auth/v1/token?grant_type=password';const r=await fetch(SB+path,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});const d=await r.json();if(!r.ok){$('#authmsg').textContent=d.msg||d.error_description||d.message||'Sign-in failed.';if(mode==='login')$('#signupbtn').style.display='block';return}if(!d.access_token){$('#authmsg').textContent='Account created. Check the email inbox for a confirmation link, then sign in.';$('#signupbtn').style.display='none';return}TOKEN=d.access_token;REFRESH=d.refresh_token||'';sessionStorage.setItem('dl_token',TOKEN);if(REFRESH)sessionStorage.setItem('dl_refresh',REFRESH);$('#login').style.display='none';$('#app').style.display='block';resetAndLoad();refreshTabCounts()}
+$('#loginbtn').onclick=()=>auth('login');$('#signupbtn').onclick=()=>auth('signup');$('#password').addEventListener('keydown',e=>{if(e.key==='Enter')auth('login')});$('#logout').onclick=()=>{clearSession();location.reload()};
+if(TOKEN){$('#login').style.display='none';$('#app').style.display='block';resetAndLoad().catch(()=>{clearSession();location.reload()});refreshTabCounts()}
 </script></div></body></html>
