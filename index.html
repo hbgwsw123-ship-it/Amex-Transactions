@@ -57,7 +57,41 @@ function ds(x){if(!x)return'';let a=String(x).split('-');return a.length===3?a[1
 function av(x){if(x.availability_status==='NOT_ON_SALE')return '<span class="avail">'+(x.onsale_date?'On sale '+e(ds(x.onsale_date)):'Announced · on-sale TBD')+'</span>';if(x.availability_status==='PRESALE')return '<span class="avail">Presale'+(x.onsale_date?' · public '+e(ds(x.onsale_date)):'')+'</span>';return''}
 function pl(x){return ({P1:'🟢 Excellent',P2:'🔵 Good',P3:'🟡 Medium',P4:'🔴 Low'})[x]||x||''}
 function wk(x){let w=String(x.why_priority||'');return x.priority==='P1'||/(exact (history|product|series|artist|venue)|strong direct history|box office proof|box-office evidence|sold out|current exact event|nutcracker archetype)/i.test(w)}
+function ballparkType(x){
+  const s=String(x.venue||'');
+  const m=s.split('—');
+  return (m.length>1?m.slice(1).join('—'):'').trim();
+}
+function ballparkWhy(x){
+  const name=String(x.event_name||'').trim(),type=ballparkType(x),date=String(x.date_text||'');
+  const hay=(name+' '+type).toLowerCase();
+  const multi=/[–—-].*(?:nov|dec|jan|feb|mar|apr|may|jun|jul|aug|sep|oct)|\bthrough\b|\bto\b/i.test(date) || /\d\s*[–-]\s*\d/.test(date);
+  const d=rowDate(x),dow=d?d.getDay():-1,weekend=dow===0||dow===5||dow===6;
+  let level='WATCH',what=type||'Special event',signal='',risk='';
+  if(/banana ball|savannah bananas|firefighters|party animals/.test(hay)){
+    level='HIGH';signal='National touring baseball-entertainment draw with strong scarcity and fan demand';risk=multi?'Multiple dates can spread demand':'Large ballpark capacity is the main supply risk';
+  } else if(/championship|title game|final\b|bowl championship/.test(hay)){
+    level='HIGH';signal='Championship / one-off stakes create urgency and broader fan interest';risk='Demand still depends on matchup strength and primary inventory';
+  } else if(/concert|music festival|edm|festival/.test(hay) && !/food/.test(hay)){
+    level=weekend?'HIGH':'MED';signal=(weekend?'Weekend ':'')+'music event can draw beyond the normal baseball audience';risk=multi?'Multi-day supply can dilute resale demand':'Ballpark capacity can create substantial primary supply';
+  } else if(/international baseball|clásico|clasico/.test(hay)){
+    level='HIGH';signal='International / identity-driven baseball matchup with concentrated fan interest';risk='Resale strength depends on participating teams and local fan base';
+  } else if(/college baseball/.test(hay)){
+    level=/\bvs\b/.test(hay)?'MED':'WATCH';signal=/\bvs\b/.test(hay)?'Named college fan bases plus a special neutral-site ballpark setting':'Special-event college baseball at a major ballpark';risk='College baseball resale is matchup-sensitive and can be thin in a large venue';
+  } else if(/soccer/.test(hay)){
+    level='MED';signal='Dedicated club fan bases and a non-baseball use of the park create some scarcity';risk='Secondary-market liquidity is usually lower than for marquee soccer or major concerts';
+  } else if(/holiday|christmas|halloween|light show|movie/.test(hay)){
+    level=multi?'LOW':'MED';signal='Seasonal family demand and holiday timing provide a clear reason to attend';risk=multi?'Many available dates reduce scarcity and resale pressure':'Local/family demand may not translate into strong secondary pricing';
+  } else if(/car show|golf|5k|walk|run|food|pickle|bourbon/.test(hay)){
+    level='LOW';signal='Experiential event with a defined local audience';risk='Usually low resale urgency, broad availability, and limited secondary-market depth';
+  } else {
+    level=multi?'LOW':'WATCH';signal='One-off non-baseball use of the stadium can create incremental demand';risk=multi?'Multiple dates reduce scarcity':'No strong resale signal is established yet';
+  }
+  const timing=weekend&&!/weekend/i.test(signal)?' Weekend timing helps.':'';
+  return level+' — '+what+'. '+signal+'.'+timing+' Risk: '+risk+'.';
+}
 function usefulWhy(x){
+  if(v==='ballparks')return ballparkWhy(x);
   const bits=[];
   const hp=Number(x.hist_profit)||0,ho=Number(x.hist_orders)||0,vp=Number(x.venue_hist_profit)||0,vo=Number(x.venue_hist_orders)||0,vd=Number(x.venue_hist_event_dates)||0;
   const label=String(x.hist_evidence_label||'').toLowerCase();
@@ -194,7 +228,7 @@ async function resetAndLoad(){
       if(!next.rows.length)break;
       D=D.concat(next.rows);
     }
-    $('#sync').textContent='Live · shared · build 10/05.18';
+    $('#sync').textContent='Live · shared · build 10/05.19';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
