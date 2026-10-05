@@ -50,20 +50,20 @@ function buildParams(offset,limit){
   p.set('order','listed.asc,priority.asc,event_sort_index.asc,perf_sort_index.asc');
   p.set('limit',limit);p.set('offset',offset);
   if(v==='venues'){
-    p.set('source_tab','in.('+[...VEN].map(x=>'"'+x.replace(/["\\]/g,'\\  if(v==='venues'){
     p.set('source_tab','in.('+[...VEN].map(x=>'"'+x.replace(/["\\]/g,'\\$&')+'"').join(',')+')');
-  } else if(['SO','ISO','NS'].includes(v)){
-    p.set('tag','eq.'+v);
-  }')+'"').join(',')+')');
   } else if(v==='comparables'){
     p.set('hist_evidence_label','ilike.*Comparable*');
   } else if(['SO','ISO','NS'].includes(v)){
     p.set('tag','eq.'+v);
   }
   const q=$('#q').value.trim();
-  if(q){const qv=qval(q);p.set('or','(event_name.ilike.'+qv+',venue.ilike.'+qv+',group_name.ilike.'+qv+',family_name.ilike.'+qv+',why_priority.ilike.'+qv+')')}
+  if(q){
+    const qv=qval(q);
+    p.set('or','(event_name.ilike.'+qv+',venue.ilike.'+qv+',group_name.ilike.'+qv+',family_name.ilike.'+qv+',why_priority.ilike.'+qv+')');
+  }
   const lf=$('#lf').value;
-  if(lf==='listed')p.set('listed','eq.true');else if(lf==='unlisted')p.set('listed','eq.false');
+  if(lf==='listed')p.set('listed','eq.true');
+  else if(lf==='unlisted')p.set('listed','eq.false');
   const ps=[...document.querySelectorAll('input[name="pri"]:checked')].map(x=>x.value);
   if(ps.length)p.set('priority','in.('+ps.join(',')+')');
   return p;
@@ -138,7 +138,7 @@ async function resetAndLoad(){
       if(!next.rows.length)break;
       D=D.concat(next.rows);
     }
-    $('#sync').textContent='Live · shared · build 10/05.8';
+    $('#sync').textContent='Live · shared · build 10/05.9';
   }catch(err){
     $('#sync').textContent='Connection error';$('#c').innerHTML='<div class="empty">Unable to load shared listings.</div>';return;
   }
