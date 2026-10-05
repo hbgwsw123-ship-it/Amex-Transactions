@@ -11,7 +11,7 @@
 <script>
 const SB='https://rpngmxrgjmcjzhgaoegq.supabase.co',FEED=SB+'/rest/v1/v_listing_feed_ui',COV=SB+'/rest/v1/v_series_coverage',API=SB+'/rest/v1/listing_events',PAPI=SB+'/rest/v1/listing_performances',OVR=SB+'/rest/v1/series_view_overrides',DISC=SB+'/rest/v1/ingestion_discoveries',KEY='sb_publishable_EtA1OzLOhSraN9y8gKpp1g_hCZy8iCg';const USERMAP={symon:'symon@listings.seatsavant.local',manilyn:'manilyn@listings.seatsavant.local',denice:'denice@listings.seatsavant.local',raisha:'raisha@listings.seatsavant.local',diana:'diana@listings.seatsavant.local'};const ALLOWED=new Set(['dunetickets@gmail.com',...Object.values(USERMAP)]);let TOKEN=sessionStorage.getItem('dl_token')||'',REFRESH=sessionStorage.getItem('dl_refresh')||'';
 VEN=new Set(["BOSTON - SYMPHONY HALL","CHICAGO - SYMPHONY CTR","DENVER - BOETTCHER","JAX - JACOBY","NASHVILLE - SCHERMERHORN","NYC - CARNEGIE","NYC - GEFFEN","PHILA - ACADEMY","PHILA - MARIAN","PHILA - MET","PHX - ORPHEUM","PHX - SYMPHONY HALL","PITTSBURGH - BENEDUM","PITTSBURGH - HEINZ","PORTLAND - SCHNITZER","SALT LAKE - ECCLES","SEATTLE - BENAROYA","SF - DAVIES","STRATHMORE"]);
-const PAGE=1000;let D=[],v='events',TOTAL=0,LOADING=false,SEARCHT=null,TMOPEN=new Set(),TBOPEN=new Set(),GOPEN=new Set(),SEL=new Set(),DETAILOPEN=new Set();
+const PAGE=1000;let D=[],v='events',TOTAL=0,LOADING=false,SEARCHT=null,TMOPEN=new Set(),TBOPEN=new Set(),GOPEN=new Set(),SEL=new Set(),DETAILOPEN=new Set(),BALLSORT='date';
 const $=s=>document.querySelector(s),e=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function tokenPayload(){
   try{
@@ -178,7 +178,7 @@ async function resetAndLoad(){
         const r=await apiFetch(DISC+'?select=*&discovery_kind=eq.new_event&acknowledged_at=is.null&order=discovered_at.desc',{headers:{Prefer:'count=exact'}});
         if(!r.ok)throw Error('admin discovery fetch failed '+r.status);
         D=await r.json();TOTAL=parseTotal(r.headers)??D.length;
-        $('#sync').textContent='Live · shared · build 10/05.19';
+        $('#sync').textContent='Live · shared · build 10/05.20';
         renderNewEvents();
         refreshNewEventsCount();
         return;
@@ -368,12 +368,16 @@ function render(){
   $('#cnt').textContent=V.length+' current rows loaded · '+direct+' verified direct links';
   if(!V.length){$('#c').innerHTML='<div class="empty">No matching current or upcoming events.</div>';return}
   if(v==='ballparks'){
-    const rows=[...V].sort((a,b)=>dateN(a)-dateN(b)||String(a.event_name||'').localeCompare(String(b.event_name||'')));
+    const rows=[...V].sort((a,b)=>BALLSORT==='venue'
+      ? String(a.venue||'').localeCompare(String(b.venue||''))||dateN(a)-dateN(b)||String(a.event_name||'').localeCompare(String(b.event_name||''))
+      : dateN(a)-dateN(b)||String(a.venue||'').localeCompare(String(b.venue||''))||String(a.event_name||'').localeCompare(String(b.event_name||'')));
     const n=rows.filter(x=>!isTM(x)),t=rows.filter(isTM),key='ballparks::__all__',tmOpen=TMOPEN.has(key);
     const tmToggle=t.length?'<button class="more tm-toggle" data-tmkey="'+e(key)+'" style="margin:10px;width:calc(100% - 20px);padding:9px 12px">'+(tmOpen?'Hide':'Show')+' Ticketmaster Events ('+t.length+')</button>':'';
     const tmSection=t.length&&tmOpen?'<div class="sg">Ticketmaster Events · '+t.length+'</div>'+tbl(t):'';
-    $('#c').innerHTML='<section class="grp"><div class="gt"><span class="series-title">MLB / MiLB Events</span><span class="series-count"> · '+rows.length+' one-off events</span></div>'+(n.length?'<div class="sg">Non-Ticketmaster Primary Links · '+n.length+'</div>'+tbl(n):'')+tmToggle+tmSection+'</section>';
+    const sortCtl='<div style="margin-left:auto;display:flex;gap:6px;align-items:center"><span class="actor">Sort by</span><button class="more ball-sort '+(BALLSORT==='date'?'on':'')+'" data-ballsort="date" style="padding:6px 10px;width:auto">Date</button><button class="more ball-sort '+(BALLSORT==='venue'?'on':'')+'" data-ballsort="venue" style="padding:6px 10px;width:auto">Venue</button></div>';
+    $('#c').innerHTML='<section class="grp"><div class="gt" style="display:flex;align-items:center;gap:10px"><span class="series-title">MLB / MiLB Events</span><span class="series-count"> · '+rows.length+' one-off events</span>'+sortCtl+'</div>'+(n.length?'<div class="sg">Non-Ticketmaster Primary Links · '+n.length+'</div>'+tbl(n):'')+tmToggle+tmSection+'</section>';
     bind();
+    document.querySelectorAll('.ball-sort').forEach(b=>b.onclick=()=>{BALLSORT=b.dataset.ballsort;render()});
     return;
   }
   const k=v==='venues'?'venue':'family_name',g=new Map();
