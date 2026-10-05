@@ -178,7 +178,7 @@ async function resetAndLoad(){
         const r=await apiFetch(DISC+'?select=*&discovery_kind=eq.new_event&acknowledged_at=is.null&order=discovered_at.desc',{headers:{Prefer:'count=exact'}});
         if(!r.ok)throw Error('admin discovery fetch failed '+r.status);
         D=await r.json();TOTAL=parseTotal(r.headers)??D.length;
-        $('#sync').textContent='Live · shared · build 10/05.18';
+        $('#sync').textContent='Live · shared · build 10/05.19';
         renderNewEvents();
         refreshNewEventsCount();
         return;
@@ -361,13 +361,18 @@ async function ackDiscovery(id){
 
 function render(){
   const clearBtn=$('#clearNsAll');if(clearBtn)clearBtn.style.display=(v==='NS'&&isAdmin())?'inline-block':'none';
-  const V=D.filter(x=>!isPast(x)).filter(x=>v==='after-april'?isAfterApril1(x):inActiveWindow(x));
+  const baseV=D.filter(x=>!isPast(x)).filter(x=>v==='after-april'?isAfterApril1(x):inActiveWindow(x));
+  const researchView=['events','ballparks','venues','comparables','after-april'].includes(v);
+  const V=researchView?baseV.filter(x=>!isTB(x)):baseV;
   const direct=V.filter(x=>x.row_kind==='performance'&&x.direct_url_verified&&x.primary_url).length;
   $('#cnt').textContent=V.length+' current rows loaded · '+direct+' verified direct links';
   if(!V.length){$('#c').innerHTML='<div class="empty">No matching current or upcoming events.</div>';return}
   if(v==='ballparks'){
     const rows=[...V].sort((a,b)=>dateN(a)-dateN(b)||String(a.event_name||'').localeCompare(String(b.event_name||'')));
-    $('#c').innerHTML='<section class="grp"><div class="gt"><span class="series-title">MLB / MiLB Events</span><span class="series-count"> · '+rows.length+' one-off events</span></div>'+tbl(rows)+'</section>';
+    const n=rows.filter(x=>!isTM(x)),t=rows.filter(isTM),key='ballparks::__all__',tmOpen=TMOPEN.has(key);
+    const tmToggle=t.length?'<button class="more tm-toggle" data-tmkey="'+e(key)+'" style="margin:10px;width:calc(100% - 20px);padding:9px 12px">'+(tmOpen?'Hide':'Show')+' Ticketmaster Events ('+t.length+')</button>':'';
+    const tmSection=t.length&&tmOpen?'<div class="sg">Ticketmaster Events · '+t.length+'</div>'+tbl(t):'';
+    $('#c').innerHTML='<section class="grp"><div class="gt"><span class="series-title">MLB / MiLB Events</span><span class="series-count"> · '+rows.length+' one-off events</span></div>'+(n.length?'<div class="sg">Non-Ticketmaster Primary Links · '+n.length+'</div>'+tbl(n):'')+tmToggle+tmSection+'</section>';
     bind();
     return;
   }
@@ -409,14 +414,24 @@ async function bulkClass(field,value){
   const ev=chosen.filter(x=>x.row_kind!=='performance').map(x=>x.event_id);
   $('#sync').textContent='Saving…';
   const payload={manual_override:true,updated_at:new Date().toISOString()};payload[field]=value;
+  if(value&&field==='tb_override')payload.ticketmaster_override=false;
+  if(value&&field==='ticketmaster_override')payload.tb_override=false;
   const calls=[];
   if(perf.length)calls.push(apiFetch(PAPI+'?id=in.('+perf.join(',')+')',{method:'PATCH',headers:{'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(payload)}));
   if(ev.length)calls.push(apiFetch(API+'?id=in.('+ev.join(',')+')',{method:'PATCH',headers:{'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(payload)}));
   const rs=await Promise.all(calls);
   if(rs.some(r=>!r.ok)){alert('Could not update all selected rows.');$('#sync').textContent='Save error';return}
-  chosen.forEach(x=>x[field]=value);
-  if(value&&field==='ticketmaster_override'){chosen.forEach(x=>{const z=(v==='venues'?(x.venue||'Uncategorized'):(x.family_name||x.group_name||'Uncategorized'));TMOPEN.add(v+'::'+z);GOPEN.add(v+'::'+z)})}
-  if(value&&field==='tb_override'){chosen.forEach(x=>{const z=(v==='venues'?(x.venue||'Uncategorized'):(x.family_name||x.group_name||'Uncategorized'));TBOPEN.add(v+'::'+z);GOPEN.add(v+'::'+z)})}
+  chosen.forEach(x=>{
+    x[field]=value;
+    if(value&&field==='tb_override')x.ticketmaster_override=false;
+    if(value&&field==='ticketmaster_override')x.tb_override=false;
+  });
+  if(value&&field==='ticketmaster_override'){
+    chosen.forEach(x=>{
+      const z=v==='ballparks'?'__all__':(v==='venues'?(x.venue||'Uncategorized'):(x.family_name||x.group_name||'Uncategorized'));
+      TMOPEN.add(v+'::'+z);GOPEN.add(v+'::'+z);
+    });
+  }
   SEL.clear();
   $('#sync').textContent='Saved';setTimeout(()=>$('#sync').textContent='Live · shared',700);
   render();
