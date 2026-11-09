@@ -1756,7 +1756,7 @@ function toggleHighlight(id,nm){
 // Poll highlights every 20 seconds
 setInterval(loadHighlight,20000);
 
-if(!TI_IS_UPLOADER)document.querySelectorAll('[data-uploader-only]').forEach(el=>el.style.display='none');
+if(!TI_IS_UPLOADER||window.top!==window.self)document.querySelectorAll('[data-uploader-only]').forEach(el=>el.style.display='none');
 tryAutoLoad();
 loadHidden();
 loadHighlight();
