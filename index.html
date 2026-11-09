@@ -607,7 +607,7 @@ function axsSortKey(x,col){
   if(col==='status'){const t=tag(x)||'~';return t==='SO'?'1SO':t==='ISO'?'2ISO':t==='NS'?'3NS':'9'+t}
   if(col==='venue')return String(x.venue||'').toLowerCase();
   if(col==='event')return String(x.event_name||'').toLowerCase();
-  if(col==='date')return String(x.event_date||'');
+  if(col==='date'){const d=rowDate(x);return d?String(d.getTime()).padStart(13,'0'):String(x.event_date||'')}
   if(col==='time')return String(x.event_time||'');
   if(col==='url')return String(x.primary_url||'').toLowerCase();
   return '';
