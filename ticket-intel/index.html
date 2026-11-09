@@ -129,6 +129,7 @@ tr.hidden-row td{background:#f9fafb!important}
   <div id="upload-view" style="display:flex;flex-direction:column;height:100vh">
     <div class="topbar"><div class="topbar-logo">&#9776;&#9776;</div><span style="font-size:13px;font-weight:600;color:#374151">Ticket Intelligence Platform</span></div>
     <div class="upload-screen">
+      <div id="no-results" class="upload-card" style="display:none"><div class="upload-title">No results yet</div><div class="upload-sub">Nothing has been uploaded yet. Check back after the next TradeDesk upload.</div></div>
       <div id="upload-card" class="upload-card">
         <div class="upload-title">Upload your data</div>
         <div class="upload-sub">Drop your three TradeDesk CSV exports to get started</div>
@@ -147,7 +148,7 @@ tr.hidden-row td{background:#f9fafb!important}
     <div class="topbar">
       <div class="topbar-logo">&#9776;&#9776;</div><div class="topbar-spacer"></div>
       <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#6b7280"><div class="live-dot"></div><span id="file-label">Ready</span></div>
-      <button class="topbar-btn" onclick="resetUpload()">&#11014; Upload new data</button>
+      <button class="topbar-btn" data-uploader-only onclick="resetUpload()">&#11014; Upload new data</button>
       <div style="width:1px;height:18px;background:#e5e7eb;margin:0 4px"></div>
       <span class="topbar-link" onclick="sT('main')" id="tl-main">Event Report</span>
       <span class="topbar-link" onclick="sT('ns_urg')" id="tl-ns_urg">NS Urgency</span>
@@ -252,6 +253,10 @@ tr.hidden-row td{background:#f9fafb!important}
 // Dune Listings sign-in is required. The listings app keeps its session in sessionStorage (same tab).
 const TI_SB='https://rpngmxrgjmcjzhgaoegq.supabase.co',TI_KEY='sb_publishable_EtA1OzLOhSraN9y8gKpp1g_hCZy8iCg';
 if(!sessionStorage.getItem('dl_token'))location.replace('../');
+// Only this account can upload. Everyone else sees the latest shared results.
+const TI_OWNER='harry@seatsavant.com',TI_BUCKET='ticket-intel';
+function tiEmail(){try{let s=(sessionStorage.getItem('dl_token')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return String(JSON.parse(atob(s)).email||'').toLowerCase()}catch(e){return ''}}
+const TI_IS_UPLOADER=tiEmail()===TI_OWNER;
 const TODAY=new Date();TODAY.setHours(0,0,0,0);
 let S={data:null,tab:'summary',hidden:{},highlighted:{},log:[],modal:null,velCol:'est',velDir:-1,up1Col:'gap',up1Dir:-1,up0Col:'avg',up0Dir:-1};
 let GRP_SORT={col:'totalV7',dir:'desc'};
@@ -342,7 +347,9 @@ function _runData(inv,sld,ns,label,names){
     const leanEv=r=>{const c=Object.assign({},r);delete c.rows;delete c.list;c.date=sD(r.date);c.lastSale=sD(r.lastSale);c.firstSaleDate=sD(r.firstSaleDate);return c};
     const leanNS=r=>Object.assign({},r,{date:sD(r.date)});
     const d=S.data;
-    IDB.set('cache',{v:7,mainR:d.mainR.map(leanEv),tbMR:(d.tbMR||[]).map(leanEv),nsNP:d.nsNP.map(leanNS),nsPK:d.nsPK.map(leanNS),names,histProfitByArtist:S._histProfitByArtist||{},allTimeArtist:S._allTimeArtist||{}}).catch(()=>{});
+    const shared={v:7,mainR:d.mainR.map(leanEv),tbMR:(d.tbMR||[]).map(leanEv),nsNP:d.nsNP.map(leanNS),nsPK:d.nsPK.map(leanNS),names,histProfitByArtist:S._histProfitByArtist||{},allTimeArtist:S._allTimeArtist||{},uploadedAt:new Date().toISOString(),uploadedBy:tiEmail()};
+    IDB.set('cache',shared).catch(()=>{});
+    if(TI_IS_UPLOADER)tiPublish(shared).catch(err=>{console.error(err);showAl('Saved on this PC, but sharing with the team failed: '+err.message)});
   }
 }
 function procAll(){
@@ -378,13 +385,25 @@ function _restoreCache(cache){
   const cr=S.data.nsUrg.filter(r=>r.urgencyTier==='Critical').length;
   if(cr>0)showAl(cr+' NS position'+(cr>1?'s':'')+' flagged Critical — check NS Urgency tab');
 }
-function tryAutoLoad(){
-  IDB.get('cache').then(cache=>{
+// Shared latest results: one private Storage object. Everyone reads it; only the uploader writes it.
+async function tiLoadShared(){
+  const r=await tiCall(TI_SB+'/storage/v1/object/authenticated/'+TI_BUCKET+'/latest.json');
+  if(r.status===400||r.status===404)return null;
+  if(!r.ok)throw new Error('Shared results request failed ('+r.status+')');
+  return r.json();
+}
+async function tiPublish(shared){
+  const r=await tiCall(TI_SB+'/storage/v1/object/'+TI_BUCKET+'/latest.json',{method:'POST',headers:{'Content-Type':'application/json','x-upsert':'true'},body:JSON.stringify(shared)});
+  if(!r.ok)throw new Error('Upload to team storage failed ('+r.status+')');
+}
+// This PC's last local copy (IndexedDB). Resolves true if something was shown.
+function tiLoadLocal(){
+  return IDB.get('cache').then(cache=>{
     if(cache&&cache.mainR){
       // If cache pre-dates recent fields, clear and re-upload
       if(cache.v!==7||cache.mainR.length>0&&(cache.mainR[0].historicalBrand===undefined||cache.mainR[0].showScore===undefined)){
         IDB.set('cache',null).catch(()=>{});
-        return;
+        return false;
       }
       document.getElementById('upload-card').style.display='none';
       document.getElementById('loading-card').style.display='block';
@@ -393,21 +412,37 @@ function tryAutoLoad(){
       IDB.set('sld',null).catch(()=>{});
       IDB.set('ns',null).catch(()=>{});
       _restoreCache(cache);
-      return;
+      return true;
     }
     // Migration: check for old raw-CSV keys (pre-refactor) and re-process them once
     return Promise.all([IDB.get('inv'),IDB.get('sld'),IDB.get('ns'),IDB.get('names')]).then(([iT,sT2,nT,names])=>{
-      if(!iT||!sT2||!nT)return;
+      if(!iT||!sT2||!nT)return false;
       document.getElementById('upload-card').style.display='none';
       document.getElementById('loading-card').style.display='block';
       const parse=t=>new Promise(res=>Papa.parse(t,{header:true,skipEmptyLines:true,complete:r=>res(r.data)}));
       return Promise.all([parse(iT),parse(sT2),parse(nT)]).then(([inv,sld,ns])=>{
         _runData(inv,sld,ns,((names&&names.inv)||'data').replace(/^inv_/,'').replace('.csv','')+' (cached)',names);
+        return true;
       });
     });
-  }).catch(err=>{console.warn('Auto-load failed:',err)});
+  });
 }
-function resetUpload(){
+function tiNoResults(){
+  if(TI_IS_UPLOADER)return; // the uploader keeps the upload screen
+  document.getElementById('upload-card').style.display='none';
+  document.getElementById('no-results').style.display='block';
+}
+function tryAutoLoad(){
+  tiLoadShared().catch(err=>{console.warn('Shared results unavailable:',err.message);return null}).then(shared=>{
+    if(shared&&shared.mainR&&shared.v===7){
+      document.getElementById('upload-card').style.display='none';
+      document.getElementById('loading-card').style.display='block';
+      _restoreCache(shared);
+      return;
+    }
+    return tiLoadLocal().then(loaded=>{if(!loaded)tiNoResults()});
+  }).catch(err=>{console.warn('Auto-load failed:',err.message)});
+}function resetUpload(){
   IDB.clear().catch(()=>{});
   FL.inv=FL.sld=FL.ns=null;
   ['inv','sld','ns'].forEach(t=>{document.getElementById('dz-'+t).classList.remove('done','over');document.getElementById('dz-'+t+'-i').textContent=t==='inv'?'📋':t==='sld'?'💰':'🎟';document.getElementById('dz-'+t+'-s').textContent=t+'_*.csv';document.getElementById('dz-'+t+'-s').classList.remove('done');document.getElementById('fi-'+t).value=''});
@@ -1655,8 +1690,8 @@ async function hideSelected(){
   showAl('Hidden '+ids.length+' event'+(ids.length>1?'s':''))
 }
 // Shared hidden/highlight state: rows in the ticket_intel_state table (kind = 'hidden' or 'highlight').
-async function tiRequest(path,opts={}){
-  const call=tok=>fetch(TI_SB+'/rest/v1/'+path,{...opts,headers:{...(opts.headers||{}),apikey:TI_KEY,Authorization:'Bearer '+tok}});
+async function tiCall(url,opts={}){
+  const call=tok=>fetch(url,{...opts,headers:{...(opts.headers||{}),apikey:TI_KEY,Authorization:'Bearer '+tok}});
   let r=await call(sessionStorage.getItem('dl_token')||'');
   if(r.status===401){
     const rt=sessionStorage.getItem('dl_refresh');
@@ -1666,10 +1701,13 @@ async function tiRequest(path,opts={}){
     sessionStorage.setItem('dl_token',d.access_token);sessionStorage.setItem('dl_refresh',d.refresh_token||rt);
     r=await call(d.access_token);
   }
-  if(!r.ok)throw new Error('Team state request failed ('+r.status+')');
   return r;
 }
-async function tiSet(kind,ids,on){
+async function tiRequest(path,opts={}){
+  const r=await tiCall(TI_SB+'/rest/v1/'+path,opts);
+  if(!r.ok)throw new Error('Team state request failed ('+r.status+')');
+  return r;
+}async function tiSet(kind,ids,on){
   if(!ids.length)return;
   if(on){
     await tiRequest('ticket_intel_state?on_conflict=kind,event_id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=ignore-duplicates'},body:JSON.stringify(ids.map(id=>({kind,event_id:String(id)})))});
@@ -1718,6 +1756,7 @@ function toggleHighlight(id,nm){
 // Poll highlights every 20 seconds
 setInterval(loadHighlight,20000);
 
+if(!TI_IS_UPLOADER)document.querySelectorAll('[data-uploader-only]').forEach(el=>el.style.display='none');
 tryAutoLoad();
 loadHidden();
 loadHighlight();
