@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket Intelligence Platform</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#f3f4f6;font-size:13px;color:#111827}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
+.app{display:flex;flex-direction:column;height:100vh;background:#fff;overflow:hidden}
+.topbar{display:flex;align-items:center;padding:0 16px;height:40px;border-bottom:1px solid #e5e7eb;gap:6px;flex-shrink:0;background:#fff}
+.topbar-logo{font-size:17px;color:#6b7280;margin-right:6px}
+.topbar-spacer{flex:1}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.topbar-btn{font-size:12px;color:#6b7280;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:4px}
+.topbar-btn:hover{background:#f3f4f6}
+.topbar-link{font-size:12px;font-weight:600;padding:4px 8px;border-radius:4px;cursor:pointer;color:#7c3aed}
+.topbar-link:hover{background:#faf5ff}
+.topbar-link.active{background:#ede9fe}
+.body{display:flex;flex:1;overflow:hidden}
+.sidebar{width:188px;border-right:1px solid #e5e7eb;overflow-y:auto;flex-shrink:0;background:#fff;padding:4px 0;transition:width .18s ease,padding .18s ease}
+.sidebar.sb-collapsed{width:0;padding:0;overflow:hidden;border:none}
+.sb-heading{font-size:10px;font-weight:600;color:#9ca3af;letter-spacing:.08em;text-transform:uppercase;padding:5px 12px 2px;margin-top:3px}
+.sb-item{display:flex;align-items:center;justify-content:space-between;padding:4px 12px;cursor:pointer;font-size:11.5px;color:#374151}
+.sb-item:hover{background:#f9fafb}
+.sb-item.active{background:#ede9fe;color:#5b21b6;font-weight:500}
+.buy-fc-lbl{display:flex;align-items:center;gap:3px;cursor:pointer;user-select:none}
+.act-hl{color:#9ca3af;background:none;border:none;font-size:13px;padding:1px 4px;cursor:pointer;line-height:1}
+.act-hl-on{color:#f59e0b!important;font-size:13px}
+.act-hl:hover{color:#f59e0b}
+tr.hl-row td{background:#fffbeb!important}
+.sb-dot{width:7px;height:7px;border-radius:50%;margin-right:7px;flex-shrink:0}
+.sb-label{display:flex;align-items:center}
+.sb-badge{font-size:10.5px;font-weight:600}
+.sb-badge.red{color:#dc2626}.sb-badge.green{color:#16a34a}.sb-badge.orange{color:#d97706}.sb-badge.gray{color:#9ca3af}
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.alert-bar{background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:7px 16px;font-size:12px;color:#166534;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.alert-close{color:#9ca3af;cursor:pointer;font-size:16px;background:none;border:none}
+.content-header{padding:10px 16px 7px;border-bottom:1px solid #e5e7eb;flex-shrink:0;display:flex;align-items:baseline;gap:10px}
+.content-title{font-size:15px;font-weight:600}
+.content-sub{font-size:12px;color:#9ca3af}
+.metrics{display:flex;border-bottom:1px solid #e5e7eb;flex-shrink:0;overflow-x:auto}
+.metric{flex-shrink:0;padding:8px 14px;border-right:1px solid #e5e7eb}
+.metric:last-child{border-right:none}
+.metric-label{font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.metric-val{font-size:16px;font-weight:600}
+.filterbar{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid #e5e7eb;flex-shrink:0;flex-wrap:wrap}
+.search{border:1px solid #e5e7eb;border-radius:5px;padding:5px 10px;font-size:12px;color:#374151;width:210px;outline:none;font-family:inherit}
+.search:focus{border-color:#a78bfa}
+.fsel{border:1px solid #e5e7eb;border-radius:5px;padding:5px 8px;font-size:12px;color:#374151;outline:none;font-family:inherit;cursor:pointer}
+.count-lbl{font-size:11px;color:#9ca3af;margin-left:auto}
+.table-wrap{flex:1;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+thead th{padding:4px 5px;text-align:left;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid #e5e7eb;background:#f9fafb;white-space:nowrap;position:sticky;top:0;z-index:1}
+tbody tr{border-bottom:1px solid #f3f4f6}
+tbody tr:hover{background:#fafafa}
+tbody td{padding:3px 5px;white-space:nowrap;color:#374151;vertical-align:middle}
+.cell-event{font-weight:600;color:#111827;max-width:180px;overflow:hidden;text-overflow:ellipsis;display:block}
+.cell-venue{color:#6b7280;white-space:nowrap;display:block}
+.cell-signal{color:#9ca3af;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;display:block}
+.num{font-variant-numeric:tabular-nums}
+.c-up{color:#16a34a;font-weight:600}.c-down{color:#dc2626;font-weight:600}.c-warn{color:#d97706;font-weight:600}.c-purple{color:#7c3aed;font-weight:600}.c-gray{color:#9ca3af}
+.url-btn{display:inline-flex;align-items:center;font-size:10.5px;padding:2px 7px;border-radius:4px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;text-decoration:none;white-space:nowrap;font-family:inherit;margin-right:3px}
+.url-btn:hover{background:#f3f4f6}
+.url-btn.primary{border-color:#ddd6fe;color:#7c3aed;background:#faf5ff}
+.url-btn.primary:hover{background:#ede9fe}
+.tag{display:inline-flex;align-items:center;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:500;white-space:nowrap}
+.tag-red{background:#fef2f2;color:#dc2626}.tag-orange{background:#fff7ed;color:#d97706}.tag-green{background:#f0fdf4;color:#16a34a}.tag-blue{background:#eff6ff;color:#2563eb}.tag-purple{background:#faf5ff;color:#7c3aed}.tag-gray{background:#f9fafb;color:#6b7280;border:1px solid #e5e7eb}.tag-teal{background:#f0fdfa;color:#0d9488}.tag-tb{background:#fef3c7;color:#92400e}
+.actions{display:flex;gap:3px;flex-wrap:wrap}
+.act{font-size:10px;padding:2px 6px;border-radius:4px;cursor:pointer;font-family:inherit;border:1px solid #e5e7eb;background:#fff;color:#6b7280;white-space:nowrap}
+.act:hover{background:#f3f4f6}
+.act-buy{border-color:#ddd6fe;color:#7c3aed;background:#faf5ff}
+.act-hide{border-color:#fecaca;color:#dc2626}
+.act-unhide{border-color:#bbf7d0;color:#15803d;background:#f0fdf4}
+.row-chk{cursor:pointer;accent-color:#6366f1;width:13px;height:13px;vertical-align:middle;margin-right:3px;flex-shrink:0}
+tr.hidden-row{opacity:0.32}
+tr.hidden-row td{background:#f9fafb!important}
+#hide-sel-btn{display:none;align-items:center;gap:4px;background:#dc2626;color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+#hide-sel-btn:hover{background:#b91c1c}
+.sum-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:16px 20px}
+.sum-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px}
+.sum-card-title{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.sum-card-val{font-size:24px;font-weight:600;color:#111827}
+.sum-card-sub{font-size:12px;color:#6b7280;margin-top:3px}
+.sum-card-link{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.sum-card-link:hover{border-color:#a78bfa;box-shadow:0 0 0 3px #ede9fe}
+.upload-screen{flex:1;display:flex;align-items:center;justify-content:center;padding:40px;background:#f9fafb}
+.upload-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:36px 40px;max-width:560px;width:100%}
+.upload-title{font-size:20px;font-weight:600;margin-bottom:4px}
+.upload-sub{font-size:13px;color:#6b7280;margin-bottom:28px}
+.drop-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+.dropzone{border:2px dashed #e5e7eb;border-radius:8px;padding:20px 12px;text-align:center;cursor:pointer;transition:all .15s}
+.dropzone:hover,.dropzone.over{border-color:#a78bfa;background:#faf5ff}
+.dropzone.done{border-color:#86efac;background:#f0fdf4}
+.dz-icon{font-size:22px;margin-bottom:6px}
+.dz-label{font-size:13px;font-weight:500;margin-bottom:3px}
+.dz-sub{font-size:11px;color:#9ca3af}
+.dz-sub.done{color:#16a34a}
+.info-box{background:#faf5ff;border:1px solid #ddd6fe;border-radius:6px;padding:10px 14px;font-size:12px;color:#5b21b6;line-height:1.6}
+.spinner{width:28px;height:28px;border:2.5px solid #e5e7eb;border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-box{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:24px;width:360px;box-shadow:0 10px 40px rgba(0,0,0,.12)}
+.modal-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.modal-event{font-size:12px;color:#9ca3af;margin-bottom:14px}
+.modal-input{width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none;resize:none}
+.modal-input:focus{border-color:#a78bfa}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.btn-cancel{padding:7px 16px;border-radius:6px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;font-family:inherit;font-size:13px}
+.btn-save{padding:7px 16px;border-radius:6px;border:none;background:#7c3aed;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
+.btn-save:hover{background:#6d28d9}
+.log-item{display:flex;gap:10px;padding:9px 16px;border-bottom:1px solid #f3f4f6;align-items:flex-start}
+.log-type{font-size:10.5px;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap;margin-top:1px;flex-shrink:0}
+.log-event{font-size:13px;font-weight:500;color:#111827}
+.log-detail{font-size:11.5px;color:#6b7280;margin-top:2px}
+.log-time{font-size:11px;color:#d1d5db;white-space:nowrap;margin-left:auto}
+.placeholder{display:flex;align-items:center;justify-content:center;flex:1;color:#9ca3af;font-size:13px;padding:60px}
+.grp-hdr{background:#f9fafb!important}
+.grp-hdr td{font-weight:600!important;color:#111827!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- UPLOAD VIEW -->
+  <div id="upload-view" style="display:flex;flex-direction:column;height:100vh">
+    <div class="topbar"><div class="topbar-logo">&#9776;&#9776;</div><span style="font-size:13px;font-weight:600;color:#374151">Ticket Intelligence Platform</span></div>
+    <div class="upload-screen">
+      <div id="upload-card" class="upload-card">
+        <div class="upload-title">Upload your data</div>
+        <div class="upload-sub">Drop your three TradeDesk CSV exports to get started</div>
+        <div class="drop-grid">
+          <div class="dropzone" id="dz-inv" ondragover="dzO(event,'inv')" ondragleave="dzL('inv')" ondrop="dzD(event,'inv')" onclick="dzC('inv')"><input type="file" id="fi-inv" accept=".csv" style="display:none" onchange="fC('inv',this)"><div class="dz-icon" id="dz-inv-i">&#128203;</div><div class="dz-label">Inventory</div><div class="dz-sub" id="dz-inv-s">inv_*.csv</div></div>
+          <div class="dropzone" id="dz-sld" ondragover="dzO(event,'sld')" ondragleave="dzL('sld')" ondrop="dzD(event,'sld')" onclick="dzC('sld')"><input type="file" id="fi-sld" accept=".csv" style="display:none" onchange="fC('sld',this)"><div class="dz-icon" id="dz-sld-i">&#128176;</div><div class="dz-label">Sales</div><div class="dz-sub" id="dz-sld-s">sld_*.csv</div></div>
+          <div class="dropzone" id="dz-ns" ondragover="dzO(event,'ns')" ondragleave="dzL('ns')" ondrop="dzD(event,'ns')" onclick="dzC('ns')"><input type="file" id="fi-ns" accept=".csv" style="display:none" onchange="fC('ns',this)"><div class="dz-icon" id="dz-ns-i">&#127999;</div><div class="dz-label">Not Spec (NS)</div><div class="dz-sub" id="dz-ns-s">ns_*.csv</div></div>
+        </div>
+        <div class="info-box">Export from <strong>Ticketmaster TradeDesk</strong> &middot; All three files required</div>
+      </div>
+      <div id="loading-card" style="display:none;text-align:center"><div class="spinner"></div><div style="font-size:14px;color:#374151;font-weight:500">Processing your data...</div><div style="font-size:12px;color:#9ca3af;margin-top:4px">Building all report tabs</div></div>
+    </div>
+  </div>
+  <!-- MAIN VIEW -->
+  <div id="main-view" style="display:none;flex-direction:column;height:100vh">
+    <div class="topbar">
+      <div class="topbar-logo">&#9776;&#9776;</div><div class="topbar-spacer"></div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#6b7280"><div class="live-dot"></div><span id="file-label">Ready</span></div>
+      <button class="topbar-btn" onclick="resetUpload()">&#11014; Upload new data</button>
+      <div style="width:1px;height:18px;background:#e5e7eb;margin:0 4px"></div>
+      <span class="topbar-link" onclick="sT('main')" id="tl-main">Event Report</span>
+      <span class="topbar-link" onclick="sT('ns_urg')" id="tl-ns_urg">NS Urgency</span>
+      <span class="topbar-link" onclick="sT('buy')" id="tl-buy">Buy Signal</span>
+      <span class="topbar-link" onclick="sT('tb')" id="tl-tb">TB Monitor</span>
+    </div>
+    <div class="body">
+      <button onclick="toggleSB()" id="sb-toggle-btn" title="Toggle sidebar" style="position:absolute;top:8px;left:8px;z-index:10;background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:14px;color:#6b7280;display:flex;align-items:center;justify-content:center;line-height:1">&#8942;</button>
+      <div class="sidebar" id="sidebar">
+        <!-- Raw data — greyed out, not a user-facing view -->
+        <div class="sb-item" id="sb-main" onclick="sT('main')" style="color:#9ca3af;font-size:11px;padding:5px 12px 2px">Main (raw data)</div>
+        <div style="height:4px;border-bottom:1px solid #f3f4f6;margin-bottom:4px"></div>
+
+        <div class="sb-heading">Views</div>
+        <div class="sb-item active" id="sb-summary" onclick="sT('summary')">Summary</div>
+        <div class="sb-item" id="sb-review" onclick="sT('review')" style="color:#d97706;font-weight:500">★ Team Review <span class="sb-badge orange" id="cnt-review"></span></div>
+        <div class="sb-item" id="sb-ns_summary" onclick="sT('ns_summary')">NS Summary</div>
+        <div class="sb-item" id="sb-grouped" onclick="sT('grouped')">Grouped Events <span class="sb-badge green" id="cnt-grouped"></span></div>
+        <div class="sb-item" id="sb-top250" onclick="sT('top250')">Top 300</div>
+        <div class="sb-item" id="sb-up1" onclick="sT('up1')">Underperform 1+ <span class="sb-badge orange" id="cnt-up1"></span></div>
+        <div class="sb-item" id="sb-up0" onclick="sT('up0')">Underperform 0 <span class="sb-badge orange" id="cnt-up0"></span></div>
+        <div class="sb-item" id="sb-velDiv" onclick="sT('velDiv')">Velocity Divergence <span class="sb-badge orange" id="cnt-velDiv"></span></div>
+
+        <div class="sb-heading" style="margin-top:6px">In Progress</div>
+        <div class="sb-item" id="sb-ns_urg" onclick="sT('ns_urg')" style="color:#9ca3af">NS Urgency <span class="sb-badge red" id="cnt-ns_urg"></span></div>
+        <div class="sb-item" id="sb-buy" onclick="sT('buy')" style="color:#9ca3af">Buy Signal <span class="sb-badge green" id="cnt-buy"></span></div>
+        <div class="sb-item" id="sb-early" onclick="sT('early')" style="color:#9ca3af">Early Demand <span class="sb-badge green" id="cnt-early"></span></div>
+        <div class="sb-item" id="sb-tb" onclick="sT('tb')" style="color:#9ca3af">TB Monitor <span class="sb-badge red" id="cnt-tb"></span></div>
+
+        <div class="sb-heading" style="margin-top:6px">Properties</div>
+        <div class="sb-item" id="sb-funnybone" onclick="sT('funnybone')">Funny Bone <span class="sb-badge gray" id="cnt-funnybone"></span></div>
+        <div class="sb-item" id="sb-vegas" onclick="sT('vegas')">Vegas <span class="sb-badge gray" id="cnt-vegas"></span></div>
+        <div class="sb-item" id="sb-opry" onclick="sT('opry')">Opry <span class="sb-badge gray" id="cnt-opry"></span></div>
+        <div class="sb-item" id="sb-disney" onclick="sT('disney')">Disney on Ice <span class="sb-badge gray" id="cnt-disney"></span></div>
+        <div class="sb-item" id="sb-harlem" onclick="sT('harlem')">Harlem Globetrotters <span class="sb-badge gray" id="cnt-harlem"></span></div>
+        <div class="sb-item" id="sb-stb" onclick="sT('stb')">Seattle Thunderbirds <span class="sb-badge gray" id="cnt-stb"></span></div>
+        <div class="sb-item" id="sb-dwarfanator" onclick="sT('dwarfanator')">Extreme Dwarfanator <span class="sb-badge gray" id="cnt-dwarfanator"></span></div>
+        <div class="sb-item" id="sb-shenyun" onclick="sT('shenyun')">Shen Yun <span class="sb-badge gray" id="cnt-shenyun"></span></div>
+        <div class="sb-item" id="sb-phantom" onclick="sT('phantom')">Phantom of the Opera <span class="sb-badge gray" id="cnt-phantom"></span></div>
+        <div class="sb-item" id="sb-lionking" onclick="sT('lionking')">Lion King <span class="sb-badge gray" id="cnt-lionking"></span></div>
+
+        <div class="sb-heading" style="margin-top:6px">NS Inventory</div>
+        <div class="sb-item" id="sb-ns_nonpark" onclick="sT('ns_nonpark')">NS - Non-Parking <span class="sb-badge gray" id="cnt-ns_nonpark"></span></div>
+        <div class="sb-item" id="sb-ns_park" onclick="sT('ns_park')">NS - Parking <span class="sb-badge gray" id="cnt-ns_park"></span></div>
+
+        <!-- Hidden duplicates -->
+        <div style="display:none" id="sb-top300tb"><div></div></div>
+        <div style="display:none" id="sb-top300profit"><div></div></div>
+        <div style="display:none" id="sb-top250ptb"><div></div></div>
+        <div style="display:none" id="sb-top250pnontb"><div></div></div>
+        <div style="display:none" id="sb-p50"><div></div></div>
+
+        <div style="height:6px"></div>
+        <div class="sb-item" id="sb-log" onclick="sT('log')">Action Log <span class="sb-badge gray" id="cnt-log">0</span></div>
+      </div>
+      <div class="content">
+        <div class="alert-bar" id="alert-bar" style="display:none"><span id="alert-text"></span><button class="alert-close" onclick="document.getElementById('alert-bar').style.display='none'">&#215;</button></div>
+        <div class="content-header"><div class="content-title" id="content-title">Summary</div><div class="content-sub" id="content-sub"></div></div>
+        <div class="metrics" id="metrics-bar"></div>
+        <div class="filterbar" id="filterbar">
+          <input class="search" id="search-box" placeholder="Search event or artist..." oninput="applyF()">
+          <select class="fsel" id="date-filter" onchange="applyF()"><option value="all">All dates</option><option value="7">Next 7 days</option><option value="14">Next 14 days</option><option value="30">Next 30 days</option><option value="90">Next 90 days</option></select>
+          <select class="fsel" id="urgency-filter" style="display:none" onchange="applyF()"><option value="all">All tiers</option><option value="Critical">Critical</option><option value="Watch">Watch</option><option value="On Pace">On Pace</option></select>
+          <label id="fb-filter-wrap" style="display:none;align-items:center;gap:5px;font-size:12px;color:#374151;cursor:pointer;user-select:none"><input type="checkbox" id="fb-filter" onchange="applyF()" style="cursor:pointer"> Excl. Funny Bone</label>
+          <span id="buy-filter-wrap" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:11px;color:#6b7280;font-weight:500">Factors:</span>
+            <label class="buy-fc-lbl"><input type="checkbox" class="buy-fc" data-fac="Priv" onchange="applyF()"> <span style="background:#ede9fe;color:#6d28d9;border-radius:3px;padding:1px 6px;font-size:10.5px;font-weight:700">Priv</span></label>
+            <label class="buy-fc-lbl"><input type="checkbox" class="buy-fc" data-fac="Clust" onchange="applyF()"> <span style="background:#eff6ff;color:#2563eb;border-radius:3px;padding:1px 6px;font-size:10.5px;font-weight:700">Clust</span></label>
+            <label class="buy-fc-lbl"><input type="checkbox" class="buy-fc" data-fac="Early" onchange="applyF()"> <span style="background:#f0fdf4;color:#15803d;border-radius:3px;padding:1px 6px;font-size:10.5px;font-weight:700">Early</span></label>
+            <label class="buy-fc-lbl"><input type="checkbox" class="buy-fc" data-fac="Accel" onchange="applyF()"> <span style="background:#fef9c3;color:#a16207;border-radius:3px;padding:1px 6px;font-size:10.5px;font-weight:700">3D</span></label>
+            <label class="buy-fc-lbl"><input type="checkbox" class="buy-fc" data-fac="Sales" onchange="applyF()"> <span style="background:#faf5ff;color:#7c3aed;border-radius:3px;padding:1px 6px;font-size:10.5px;font-weight:700">Sales</span></label>
+            <span style="width:1px;height:14px;background:#e5e7eb;margin:0 2px"></span>
+            <span style="font-size:11px;color:#6b7280;font-weight:500">Min:</span>
+            <label class="buy-fc-lbl"><input type="radio" name="buy-min" value="0" checked onchange="applyF()"> <span style="font-size:11px;color:#6b7280">Any</span></label>
+            <label class="buy-fc-lbl"><input type="radio" name="buy-min" value="2" onchange="applyF()"> <span style="font-size:11.5px;font-weight:600;color:#d97706">2+</span></label>
+            <label class="buy-fc-lbl"><input type="radio" name="buy-min" value="3" onchange="applyF()"> <span style="font-size:11.5px;font-weight:600;color:#16a34a">3+</span></label>
+            <label class="buy-fc-lbl"><input type="radio" name="buy-min" value="4" onchange="applyF()"> <span style="font-size:11.5px;font-weight:600;color:#7c3aed">4+</span></label>
+          </span>
+          <span id="type-filter-wrap" style="display:none;align-items:center;gap:10px">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;cursor:pointer;user-select:none"><input type="checkbox" id="tb-filter" checked onchange="applyF()" style="cursor:pointer"><span style="background:rgba(245,158,11,0.13);color:#92400e;border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700">TB</span></label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#374151;cursor:pointer;user-select:none"><input type="checkbox" id="ds-filter" checked onchange="applyF()" style="cursor:pointer"><span style="background:rgba(99,102,241,0.10);color:#3730a3;border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700">DS</span></label>
+          </span>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#374151;cursor:pointer;user-select:none;margin-left:2px"><input type="checkbox" id="show-hidden" onchange="applyF()" style="cursor:pointer"> Show Hidden</label>
+          <button id="hide-sel-btn" onclick="hideSelected()">Hide <span id="sel-count">0</span> selected</button>
+          <span class="count-lbl" id="row-count"></span>
+        </div>
+        <div class="table-wrap" id="table-wrap"></div>
+      </div>
+    </div>
+  </div>
+  <!-- MODAL -->
+  <div class="modal-overlay" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box">
+      <div class="modal-title" id="modal-title">Add Note</div>
+      <div class="modal-event" id="modal-event"></div>
+      <textarea class="modal-input" id="modal-input" rows="3"></textarea>
+      <div class="modal-footer"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="submitModal()">Save</button></div>
+    </div>
+  </div>
+</div>
+<script>
+// Dune Listings sign-in is required. The listings app keeps its session in sessionStorage (same tab).
+const TI_SB='https://rpngmxrgjmcjzhgaoegq.supabase.co',TI_KEY='sb_publishable_EtA1OzLOhSraN9y8gKpp1g_hCZy8iCg';
+if(!sessionStorage.getItem('dl_token'))location.replace('../');
+const TODAY=new Date();TODAY.setHours(0,0,0,0);
+let S={data:null,tab:'summary',hidden:{},highlighted:{},log:[],modal:null,velCol:'est',velDir:-1,up1Col:'gap',up1Dir:-1,up0Col:'avg',up0Dir:-1};
+let GRP_SORT={col:'totalV7',dir:'desc'};
+let BUY_SORT={col:'signalCount',dir:'desc'};
+// Per-tab sort state for Top 250 views; defaults reset on tab switch
+const TOP_SORT={top250:{col:'_revPotential',dir:'desc'},top250pnontb:{col:'profit',dir:'desc'},top250ptb:{col:'profit',dir:'desc'}};
+function sortTop(col){const ts=TOP_SORT[S.tab];if(!ts)return;if(ts.col===col)ts.dir=ts.dir==='desc'?'asc':'desc';else{ts.col=col;ts.dir='desc';}applyF()}
+const FL={inv:null,sld:null,ns:null};
+try{S.hidden=JSON.parse(localStorage.getItem('tip_h')||'{}')}catch(e){}
+try{S.highlighted=JSON.parse(localStorage.getItem('tip_hl')||'{}')}catch(e){}
+S.selected=new Set();
+try{S.log=JSON.parse(localStorage.getItem('tip_l')||'[]')}catch(e){}
+
+// Constants from Python script
+const FB_PATS=["funny bone columbus", "funny bone comedy club - columbus", "the funny bone columbus", "funny bone virginia beach", "funny bone comedy club - virginia beach", "funny bone kansas city", "funny bone comedy club - kansas city", "funny bone tampa", "funny bone comedy club - tampa", "funny bone richmond", "funny bone comedy club - richmond", "funny bone orlando", "funny bone comedy club - orlando", "funny bone liberty", "funny bone - liberty township", "funny bone comedy club - liberty", "funny bone omaha", "funny bone comedy club - omaha", "funny bone cleveland", "funny bone comedy club - cleveland", "funny bone toledo", "funny bone comedy club - toledo"];
+const VG_VENUES=["zouk nightclub - las vegas", "liv nightclub las vegas", "palm tree beach club at mgm grand", "xs nightclub at wynn las vegas", "hakkasan las vegas nightclub", "omnia las vegas", "marquee nightclub & dayclub", "tao nightclub", "tao beach dayclub (venetian)", "ayu dayclub (resorts world)"];
+const MKTS=['ticketmaster','stubhub','seatgeek','gotickets'];
+
+// Utilities
+const pD=v=>{if(!v)return null;const d=new Date(v);return isNaN(d.getTime())?null:d};
+const fD=d=>{if(!d)return'—';const x=new Date(d);return(x.getMonth()+1)+'/'+x.getDate()+'/'+String(x.getFullYear()).slice(2)};
+const dU=d=>{if(!d)return null;const x=new Date(d);x.setHours(0,0,0,0);return Math.round((x-TODAY)/86400000)};
+const nI=x=>String(x||'').trim().replace(/\.0$/,'');
+const nN=x=>String(x||'').trim().toLowerCase();
+// Alias map: nN(variant) → canonical display name
+const GRP_ALIAS={
+  'extreme dwarfanators wrestling':'Extreme Dwarfanator Wrestling',
+  'don "dc" curry':'Don DC Curry',
+  'don d curry':'Don DC Curry',
+  'd. l. hughley':'D.L. Hughley',
+  'marcus d wiley':'Marcus D. Wiley',
+  'bruce bruce: cool since day one tour':'Bruce Bruce',
+  'bruce bruce - cool since day one tour':'Bruce Bruce',
+  'bruce bruce  cool since day one tour':'Bruce Bruce',
+  'desi banks: your favorite cousin tour':'Desi Banks',
+  'desi banks your favorite cousin tour':'Desi Banks',
+};
+// Returns the canonical grouping key for an event name
+function grpKey(n){const k=nN(n);if(GRP_ALIAS[k])return nN(GRP_ALIAS[k]);if(k.startsWith('reading fightin phils'))return 'reading fightin phils';return k}
+// Returns the canonical display name for an event name
+function grpDisp(n){const k=nN(n);if(GRP_ALIAS[k])return GRP_ALIAS[k];if(k.startsWith('reading fightin phils'))return 'Reading Fightin Phils';return n}
+const fP=v=>(isNaN(v)||v===null)?'—':((v*100).toFixed(1)+'%');
+const fM=v=>(isNaN(v)||v===null)?'—':('$'+Number(v).toLocaleString('en-US',{maximumFractionDigits:0}));
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// Shared chip helper — inline-flex so text+content stays vertically centered
+const ch=(txt,bg,tc)=>'<span style="display:inline-flex;align-items:center;background:'+bg+';color:'+tc+';border-radius:4px;padding:1px 7px;font-weight:600;font-size:11px;white-space:nowrap;line-height:1.5;vertical-align:middle">'+txt+'</span>';
+// Consistent % Private formatter — chips for high values, muted text for low
+const privFmt=p=>{const pct=Math.round((p||0)*100)+'%';if(p>=0.8)return ch(pct,'#fee2e2','#b91c1c');if(p>=0.6)return ch(pct,'#fff7ed','#c2410c');if(p>=0.4)return'<span style="font-weight:600;color:#d97706;vertical-align:middle">'+pct+'</span>';return'<span style="color:#9ca3af;vertical-align:middle">'+pct+'</span>'};
+function rC(h,c){for(const x of c){const f=h.find(k=>k.trim().toLowerCase()===x.toLowerCase());if(f)return f}return null}
+function cCl(dates){const sv=[...dates].sort((a,b)=>a-b);let c=0,t=0,r=1;for(let i=1;i<sv.length;i++){const g=Math.round((sv[i]-sv[i-1])/86400000);if(g<=5)r++;else{if(r>=2){c++;if(r>=3)t++}r=1}}if(r>=2){c++;if(r>=3)t++}return{clusters:c,triples:t}}
+function xU(n){if(!n)return'';const m=String(n).match(/https?:\/\/[\w./?&=_~%#:@!+\-]+/);return m?m[0]:''}
+
+// File upload
+function dzO(e,t){e.preventDefault();document.getElementById('dz-'+t).classList.add('over')}
+function dzL(t){document.getElementById('dz-'+t).classList.remove('over')}
+function dzD(e,t){e.preventDefault();dzL(t);lF(t,e.dataTransfer.files[0])}
+function dzC(t){document.getElementById('fi-'+t).click()}
+function fC(t,i){if(i.files[0])lF(t,i.files[0])}
+function lF(type,file){
+  FL[type]=file;
+  document.getElementById('dz-'+type).classList.add('done');
+  document.getElementById('dz-'+type+'-i').textContent='✓';
+  document.getElementById('dz-'+type+'-s').textContent=file.name;
+  document.getElementById('dz-'+type+'-s').classList.add('done');
+  if(FL.inv&&FL.sld&&FL.ns)procAll()
+}
+// ── IndexedDB cache (handles files of any size) ───────────────────────────────
+const IDB={
+  _db:null,_p:null,
+  open(){if(this._db)return Promise.resolve(this._db);if(this._p)return this._p;this._p=new Promise((res,rej)=>{const r=indexedDB.open('tip_csvs',1);r.onupgradeneeded=e=>e.target.result.createObjectStore('d');r.onsuccess=e=>{this._db=e.target.result;res(this._db)};r.onerror=()=>rej(r.error)});return this._p},
+  async set(k,v){const db=await this.open();return new Promise((res,rej)=>{const tx=db.transaction('d','readwrite');tx.objectStore('d').put(v,k);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})},
+  async get(k){const db=await this.open();return new Promise((res,rej)=>{const tx=db.transaction('d','readonly');const r=tx.objectStore('d').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})},
+  async clear(){const db=await this.open();return new Promise((res,rej)=>{const tx=db.transaction('d','readwrite');tx.objectStore('d').clear();tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
+};
+function _runData(inv,sld,ns,label,names){
+  S.data=procData(inv,sld,ns);
+  updCnts();
+  document.getElementById('loading-card').style.display='none';
+  document.getElementById('upload-view').style.display='none';
+  document.getElementById('main-view').style.display='flex';
+  document.getElementById('file-label').textContent=label;
+  sT('summary');
+  const cr=S.data.nsUrg.filter(r=>r.urgencyTier==='Critical').length;
+  if(cr>0)showAl(cr+' NS position'+(cr>1?'s':'')+' flagged Critical — check NS Urgency tab');
+  // Save lean processed data (no raw rows/list) — far smaller than raw CSVs
+  if(names){
+    const sD=v=>v instanceof Date?v.toISOString():null;
+    const leanEv=r=>{const c=Object.assign({},r);delete c.rows;delete c.list;c.date=sD(r.date);c.lastSale=sD(r.lastSale);c.firstSaleDate=sD(r.firstSaleDate);return c};
+    const leanNS=r=>Object.assign({},r,{date:sD(r.date)});
+    const d=S.data;
+    IDB.set('cache',{v:7,mainR:d.mainR.map(leanEv),tbMR:(d.tbMR||[]).map(leanEv),nsNP:d.nsNP.map(leanNS),nsPK:d.nsPK.map(leanNS),names,histProfitByArtist:S._histProfitByArtist||{},allTimeArtist:S._allTimeArtist||{}}).catch(()=>{});
+  }
+}
+function procAll(){
+  document.getElementById('upload-card').style.display='none';
+  document.getElementById('loading-card').style.display='block';
+  const readText=f=>new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsText(f)});
+  const parse=t=>new Promise(res=>Papa.parse(t,{header:true,skipEmptyLines:true,complete:r=>res(r.data)}));
+  Promise.all([readText(FL.inv),readText(FL.sld),readText(FL.ns)]).then(([iT,sT2,nT])=>{
+    return Promise.all([parse(iT),parse(sT2),parse(nT)]);
+  }).then(([inv,sld,ns])=>{
+    _runData(inv,sld,ns,FL.inv.name.replace(/^inv_/,'').replace('.csv','')+' loaded',{inv:FL.inv.name,sld:FL.sld.name,ns:FL.ns.name});
+  }).catch(err=>alert('Error: '+err.message))
+}
+function _restoreCache(cache){
+  // Fast restore from lean processed cache
+  const rd=v=>v?new Date(v):null;
+  const revEv=r=>Object.assign({},r,{date:rd(r.date),lastSale:rd(r.lastSale),firstSaleDate:rd(r.firstSaleDate),rows:[],list:[]});
+  const revNS=r=>Object.assign({},r,{date:rd(r.date)});
+  const mainR=cache.mainR.map(revEv);
+  const tbMR=(cache.tbMR||[]).map(revEv);
+  const nsNP=(cache.nsNP||[]).map(revNS);
+  const nsPK=(cache.nsPK||[]).map(revNS);
+  S._histProfitByArtist=cache.histProfitByArtist||{};
+  S._allTimeArtist=cache.allTimeArtist||{};
+  S.data=buildDerived(mainR,tbMR,nsNP,nsPK,undefined,cache.histProfitByArtist||{});
+  updCnts();
+  document.getElementById('loading-card').style.display='none';
+  document.getElementById('upload-view').style.display='none';
+  document.getElementById('main-view').style.display='flex';
+  const lbl=((cache.names&&cache.names.inv)||'data').replace(/^inv_/,'').replace('.csv','');
+  document.getElementById('file-label').textContent=lbl+' (cached)';
+  sT('summary');
+  const cr=S.data.nsUrg.filter(r=>r.urgencyTier==='Critical').length;
+  if(cr>0)showAl(cr+' NS position'+(cr>1?'s':'')+' flagged Critical — check NS Urgency tab');
+}
+function tryAutoLoad(){
+  IDB.get('cache').then(cache=>{
+    if(cache&&cache.mainR){
+      // If cache pre-dates recent fields, clear and re-upload
+      if(cache.v!==7||cache.mainR.length>0&&(cache.mainR[0].historicalBrand===undefined||cache.mainR[0].showScore===undefined)){
+        IDB.set('cache',null).catch(()=>{});
+        return;
+      }
+      document.getElementById('upload-card').style.display='none';
+      document.getElementById('loading-card').style.display='block';
+      // Wipe any leftover raw-CSV keys so migration never fires again
+      IDB.set('inv',null).catch(()=>{});
+      IDB.set('sld',null).catch(()=>{});
+      IDB.set('ns',null).catch(()=>{});
+      _restoreCache(cache);
+      return;
+    }
+    // Migration: check for old raw-CSV keys (pre-refactor) and re-process them once
+    return Promise.all([IDB.get('inv'),IDB.get('sld'),IDB.get('ns'),IDB.get('names')]).then(([iT,sT2,nT,names])=>{
+      if(!iT||!sT2||!nT)return;
+      document.getElementById('upload-card').style.display='none';
+      document.getElementById('loading-card').style.display='block';
+      const parse=t=>new Promise(res=>Papa.parse(t,{header:true,skipEmptyLines:true,complete:r=>res(r.data)}));
+      return Promise.all([parse(iT),parse(sT2),parse(nT)]).then(([inv,sld,ns])=>{
+        _runData(inv,sld,ns,((names&&names.inv)||'data').replace(/^inv_/,'').replace('.csv','')+' (cached)',names);
+      });
+    });
+  }).catch(err=>{console.warn('Auto-load failed:',err)});
+}
+function resetUpload(){
+  IDB.clear().catch(()=>{});
+  FL.inv=FL.sld=FL.ns=null;
+  ['inv','sld','ns'].forEach(t=>{document.getElementById('dz-'+t).classList.remove('done','over');document.getElementById('dz-'+t+'-i').textContent=t==='inv'?'📋':t==='sld'?'💰':'🎟';document.getElementById('dz-'+t+'-s').textContent=t+'_*.csv';document.getElementById('dz-'+t+'-s').classList.remove('done');document.getElementById('fi-'+t).value=''});
+  document.getElementById('upload-card').style.display='block';
+  document.getElementById('loading-card').style.display='none';
+  document.getElementById('upload-view').style.display='flex';
+  document.getElementById('main-view').style.display='none'
+}
+
+// ─── buildDerived: reconstructs all tab views from the four core arrays ────────
+// Called on initial load (from procData) AND on cached restore (from tryAutoLoad).
+function buildDerived(mainR,tbMR,nsNP,nsPK,allTimeArtist,histProfitByArtist){allTimeArtist=allTimeArtist||{};histProfitByArtist=histProfitByArtist||{};
+  if(!allTimeArtist)allTimeArtist={};
+  const addTbDs=r=>Object.assign({},r,{tbDs:r.isTB?'TB':'DS'});
+  const allR=[...mainR,...tbMR];
+  const top250=mainR.slice(0,250);
+  const top300tb=allR.slice().sort((a,b)=>b.demand-a.demand).slice(0,300).map(addTbDs);
+  const top300profit=allR.slice().sort((a,b)=>b.profit-a.profit).slice(0,300).map(addTbDs);
+  const top250ptb=tbMR.slice().sort((a,b)=>b.profit-a.profit).slice(0,250).map(r=>Object.assign({},r,{tbDs:'TB'}));
+  const top250pnontb=mainR.slice().sort((a,b)=>b.profit-a.profit).slice(0,250);
+
+  const grpMap={};
+  mainR.forEach(r=>{const nm=grpKey(r.eventName);if(!grpMap[nm])grpMap[nm]={eventName:grpDisp(r.eventName),count:0,totalSales:0,totalRev:0,totalProfit:0,totalCost:0,avgDemand:0,avgBrand:0,avgTourHeat:0,avgShow:0,totalV3:0,totalV7:0,totalV14:0,totalV30:0,activeDates:0,upcomingCount:0,eventId:grpDisp(r.eventName),events:[]};grpMap[nm].count++;grpMap[nm].totalSales+=r.count;grpMap[nm].totalRev+=r.total;grpMap[nm].totalProfit+=r.profit;grpMap[nm].totalCost+=(r.cost||0);grpMap[nm].avgDemand+=r.demand;grpMap[nm].avgBrand+=(r.historicalBrand||0);grpMap[nm].avgTourHeat+=(r.tourHeat||0);grpMap[nm].avgShow+=(r.showModifier||0);grpMap[nm].totalV3+=(r.v3||0);grpMap[nm].totalV7+=(r.v7||0);grpMap[nm].totalV14+=(r.v14||0);grpMap[nm].totalV30+=(r.v30||0);if(r.count>0)grpMap[nm].activeDates+=1;if(r.daysTil!==null&&r.daysTil>=0)grpMap[nm].upcomingCount+=1;grpMap[nm].events.push(r)});
+  const groupedR=Object.values(grpMap).filter(g=>g.count>=5).map(g=>{
+    const nm=nN(g.eventName);
+    const activePct=g.count>0?g.activeDates/g.count:0;
+    const tourProfitPct=g.totalCost>0?g.totalProfit/g.totalCost:0;
+    const allTimeSales=allTimeArtist[nm]||g.totalSales;
+    const velocityComponent=(g.totalV7*2)+(g.totalV30*0.5);
+    const revenueComponent=Math.log1p(g.totalRev/1000)*8;
+    const scaleComponent=Math.log(g.count+1)*activePct*5;
+    const brandComponent=Math.log1p(allTimeSales)*3;
+    const profitComponent=tourProfitPct*5;
+    const tourDemand=Math.round((velocityComponent+revenueComponent+scaleComponent+brandComponent+profitComponent)*10)/10;
+    const gk=grpKey(g.eventName);
+    const histProfit=histProfitByArtist[gk]||0;
+    return Object.assign({},g,{activePct,tourProfitPct,tourDemand,velocityComponent:Math.round(velocityComponent*10)/10,revenueComponent:Math.round(revenueComponent*10)/10,scaleComponent:Math.round(scaleComponent*10)/10,brandComponent:Math.round(brandComponent*10)/10,profitComponent:Math.round(profitComponent*10)/10,avgDemand:Math.round(g.avgDemand/g.count*10)/10,avgBrand:Math.round(g.avgBrand/g.count*10)/10,avgTourHeat:Math.round(g.avgTourHeat/g.count*10)/10,avgShow:Math.round(g.avgShow/g.count*10)/10,profitPct:g.totalRev>0?g.totalProfit/g.totalRev:0,upcomingCount:g.upcomingCount,histProfit});
+  }).sort((a,b)=>b.tourDemand-a.tourDemand);
+
+  const funnyBone=mainR.filter(r=>FB_PATS.some(p=>r.venue.toLowerCase().includes(p))).sort((a,b)=>(a.venue||'').localeCompare(b.venue||'')||(a.date||0)-(b.date||0));
+  const vegas=mainR.filter(r=>VG_VENUES.includes(r.venue.toLowerCase().trim()));
+  const opry=mainR.filter(r=>{const n=r.eventName.toLowerCase();return(n.includes('grand ole opry')||n.includes('opry at the ryman')||n.includes('opry 100')||n.includes('opry country classics'))&&!n.includes('parking')&&!n.includes('nutcracker')&&!n.includes('wiggles')&&!n.includes('fitz')}).sort((a,b)=>b.demand-a.demand);
+  const disney=mainR.filter(r=>{const n=r.eventName.toLowerCase();return n.includes('disney on ice')&&!n.includes('harlem globetrotters')&&!n.includes('globetrotters')&&!n.includes('parking')}).sort((a,b)=>(a.date||0)-(b.date||0));
+  const harlem=mainR.filter(r=>{const n=r.eventName.toLowerCase();return n.includes('harlem globetrotters')&&!n.includes('disney on ice')&&!n.includes('disney')}).sort((a,b)=>(a.date||0)-(b.date||0));
+  const stb=mainR.filter(r=>r.venue.toLowerCase().trim()==='accesso showare center'&&r.eventName.toLowerCase().includes('seattle thunderbirds'));
+  const dwarfanator=mainR.filter(r=>r.eventName.toLowerCase().includes('extreme dwarfanator')).sort((a,b)=>b.demand-a.demand);
+  const shenYun=mainR.filter(r=>r.eventName.toLowerCase().includes('shen yun')).sort((a,b)=>b.demand-a.demand);
+  const phantom=mainR.filter(r=>r.eventName.toLowerCase().includes('phantom of the opera')).sort((a,b)=>b.demand-a.demand);
+  const lionKing=mainR.filter(r=>r.eventName.toLowerCase().includes('lion king')).sort((a,b)=>b.demand-a.demand);
+
+  const nsG={};
+  nsNP.forEach(r=>{const k=nN(r.event)+'__'+(r.date?r.date.toISOString().slice(0,10):'');if(!nsG[k])nsG[k]={event:r.event,date:r.date,venue:r.venue,totalQty:0,totalCost:0};nsG[k].totalQty+=r.qty;nsG[k].totalCost+=r.cost});
+  const nsUrg=Object.values(nsG).map(g=>{
+    const dt=dU(g.date);
+    const mx=mainR.find(m=>nN(m.eventName).includes(nN(g.event))||nN(g.event).includes(nN(m.eventName)));
+    const dr=mx?mx.v7/7:0;const proj=dr*Math.max(dt||0,0);
+    const aR=Math.max(g.totalQty-proj,0);const dR=g.totalCost>0?(aR/Math.max(g.totalQty,1))*g.totalCost:0;
+    let tier='On Pace';if(aR>0){if(dt!==null&&dt<=7)tier='Critical';else if(dt!==null&&dt<=14)tier='Watch';else tier='Monitor'}
+    const sc=dt&&dt>0?(dR/dt)*(dt<=7?3:dt<=14?2:1):0;
+    let bc='Broadcasting';if(mx&&mx.isSM)bc='SM Hold';else if(mx&&mx.pctPrivate>0.5)bc='Not Broadcasting';
+    let ac='—';if(bc==='SM Hold')ac='Supply mgmt — hold';else if(bc==='Not Broadcasting'&&aR>0)ac='⚠ Check broadcast';else if(aR>0)ac='↓ Adjust pricing';else ac='✓ On pace';
+    return Object.assign({},g,{eventId:g.event+'__'+g.date,eventName:g.event,dailyRate:Math.round(dr*10)/10,projectedCleared:Math.round(proj),ticketsAtRisk:Math.round(aR),dollarAtRisk:Math.round(dR),urgencyTier:tier,urgencyScore:sc,broadcastStatus:bc,recommendedAction:ac,velTrend:mx?mx.velTrend:'—',v7:mx?mx.v7:0,v3:mx?mx.v3:0,daysTil:dt,eventUrl:mx?mx.eventUrl:'',tdUrl:mx?mx.tdUrl:''})
+  }).sort((a,b)=>b.urgencyScore-a.urgencyScore);
+
+  // Repricing queue: artist has proven demand, this specific date has low absolute sales and lags tour peers
+  const up1=mainR.filter(r=>(r.totalArtistSales||0)>=15&&r.count>=1&&r.count<=25&&r.count<r.perShowExpected).map(r=>{const rg=Math.round(r.perShowExpected-r.count),pg=Math.round(rg/r.perShowExpected*100);return Object.assign({},r,{rawGap:rg,pctGap:pg})}).sort((a,b)=>b.rawGap-a.rawGap||b.perShowExpected-a.perShowExpected);
+  const up0=mainR.filter(r=>(r.totalArtistSales||0)>=15&&r.count===0).sort((a,b)=>b.perShowExpected-a.perShowExpected);
+  const buyS=mainR.filter(r=>{
+    if(r.daysTil===null||r.daysTil<0)return false;
+    const pathA=r.pctPrivate>=0.50&&(r.v7||0)>=1;
+    const pathB=r.earlyClusters>=2&&(r.v7||0)>=1;  // v7>=1 — one recent sale is enough if clusters confirm
+    return pathA||pathB;
+  }).map(r=>{
+    // Five independent signal factors — computed fresh from raw fields (cache-safe)
+    const fPriv=(r.pctPrivate||0)>=0.50;
+    const fClust=(r.earlyClusters||0)>=2;
+    const fEarly=(r.earlySalesCount||0)>=1;
+    const fAccel=(r.v3||0)>=3; // 3+ sales in last 72 hours
+    const fSales=(r.count||0)>=10;
+    const signalCount=[fPriv,fClust,fEarly,fAccel,fSales].filter(Boolean).length;
+    // Derive label from the two entry-path conditions
+    const pA=(r.pctPrivate||0)>=0.50&&(r.v7||0)>=1;
+    const pB=(r.earlyClusters||0)>=2&&(r.v7||0)>=1;
+    const signalPath=(pA&&pB)?'Both':pA?'Private':pB?'Clusters':null;
+    const clusterScore=((r.earlyClusters||0)*12)+((r.earlyTriples||0)*8);
+    const velocityScore=((r.v3||0)*4)+((r.v7||0)*2)+(r.isAccelerating?10:0);
+    const privateScore=(r.pctPrivate||0)*20;
+    const eventDemand=Math.log1p(r.count||0)*5;
+    const baseScore=clusterScore+velocityScore+privateScore+eventDemand;
+    const artistMult=1+(Math.log1p(r.tourHeat||0)*0.1);
+    const buyScore=Math.round(baseScore*artistMult);
+    const hasNS=nsNP.some(n=>nN(n.event).includes(nN(r.eventName))||nN(r.eventName).includes(nN(n.event)));
+    return Object.assign({},r,{buyScore,hasNS,signalPath,signalCount,fPriv,fClust,fEarly,fAccel,fSales});
+  }).sort((a,b)=>b.buyScore-a.buyScore);
+  // Consensus scoring: (realized_profit + recoverable_profit) × urgency
+  // recoverable = avgProfitPerSale × gap × confidence(artist history depth)
+  // urgency = 60/daysTil — distant events score lower, imminent events score higher (no floor)
+  const velDiv=mainR.filter(r=>{
+    if(!r.daysTil||r.daysTil<=0)return false;
+    if(r.daysTil>=180)return false;                  // 180+ days out — too early to act
+    if(r.count<2)return false;
+    if((r.perShowExpected||0)<1)return false;
+    if((r.lastSaleDays||999)<3)return false;          // sold within last 3 days — not actionably stale
+    return true;
+  }).map(r=>{
+    const expectedDailyRate=r.perShowExpected/90;
+    const actualDailyRate=(r.v30||0)/30;
+    const divergence=Math.max(expectedDailyRate-actualDailyRate,0);
+    if(divergence<=0)return null;
+    const profitPerSale=r.count>0?r.profit/r.count:0;
+    const dailyProfitGap=divergence*profitPerSale;
+    const runway=Math.min(r.daysTil,90);
+    const recoverableProfit=Math.round(dailyProfitGap*runway);
+    // Priority: velocity drop % — how far 7D pace is below expected 7D baseline
+    const expected7d=(r.perShowExpected/90)*7;
+    const velDrop=expected7d>0?Math.round(Math.max(0,expected7d-(r.v7||0))/expected7d*100):0;
+    const priorityScore=velDrop; // sort by velocity drop desc
+    let divType='Price';
+    if(r.pctPrivate>=1.0)divType='Broadcast';
+    else if(r.pctPrivate>=0.5)divType='Price / Broadcast';
+    else if((r.v30||0)>0&&r.v7===0)divType='Recent collapse';
+    return Object.assign({},r,{
+      recoverableProfit,priorityScore,
+      expectedDailyRate:Math.round(expectedDailyRate*1000)/1000,
+      actualDailyRate:Math.round(actualDailyRate*1000)/1000,
+      divergence:Math.round(divergence*1000)/1000,
+      dailyProfitGap:Math.round(dailyProfitGap*100)/100,
+      runway,divType
+    });
+  }).filter(Boolean).sort((a,b)=>b.recoverableProfit-a.recoverableProfit);
+  const p50=mainR.filter(r=>r.pctPrivate>=0.5).sort((a,b)=>b.demand-a.demand);
+  const earlyD=mainR.filter(r=>r.earlyClusters>=1).sort((a,b)=>b.earlyClusters-a.earlyClusters||b.demand-a.demand);
+
+  // TB alerts — reconstructed from tbMR (firstSaleDate + mktSales already stored on each row)
+  const tbAl=tbMR.map(r=>{
+    const ds=r.firstSaleDate?Math.round((TODAY-new Date(r.firstSaleDate))/86400000):0;
+    const mc=r.mktSales||Object.fromEntries(MKTS.map(m=>[m,0]));
+    let ft=null;
+    if(r.count>=5&&ds>=14){const ms=MKTS.filter(m=>mc[m]===0);if(ms.length)ft='Mapping Failure — no sales on: '+ms.join(', ')}
+    if(!ft&&r.count>=5&&r.v7===0)ft='Stale — zero 7D sales';
+    if(!ft&&r.v7>=2&&r.profitPct<0.05)ft='Low margin while selling';
+    if(!ft)return null;
+    return{eventId:r.eventId,eventName:r.eventName,date:r.date,daysTil:r.daysTil,failType:ft,totalSales:r.count,v7:r.v7,profitPct:r.profitPct,mktCounts:mc,eventUrl:r.eventUrl,tdUrl:r.tdUrl}
+  }).filter(Boolean);
+
+  const tR=mainR.reduce((s,r)=>s+r.total,0),tC=mainR.reduce((s,r)=>s+r.cost,0),tP=mainR.reduce((s,r)=>s+r.profit,0);
+  const tNC=nsNP.reduce((s,r)=>s+r.cost,0)+nsPK.reduce((s,r)=>s+r.cost,0);
+  return{mainR,tbMR,top250,top300tb,top300profit,top250ptb,top250pnontb,groupedR,nsUrg,nsNP,nsPK,up1,up0,buyS,velDiv,p50,earlyD,tbAl,funnyBone,vegas,opry,disney,harlem,stb,dwarfanator,shenYun,phantom,lionKing,tR,tC,tP,tNC}
+}
+
+function procData(invR,sldR,nsR){
+  const hi=invR.length?Object.keys(invR[0]):[];
+  const hs=sldR.length?Object.keys(sldR[0]):[];
+  const hn=nsR.length?Object.keys(nsR[0]):[];
+  const inv_eid=rC(hi,['Event ID'])||(hi.length>18?hi[18]:hi[0]);
+  const inv_ev=rC(hi,['Event Name','Event'])||hi[0];
+  const inv_dt=rC(hi,['Event Date','Date']);
+  const inv_vn=rC(hi,['Venue','Venue Name']);
+  const inv_st=rC(hi,['Status']);
+  const inv_nt=rC(hi,['Private Note','Private Notes','Notes']);
+  const inv_tm=rC(hi,['Event Time','Time']);
+  const inv_ct=rC(hi,['Category']);
+  const sld_eid=rC(hs,['Event ID'])||(hs.length>18?hs[18]:hs[0]);
+  const sld_ev=rC(hs,['Event Name','Event','Event Title','EventName','event_name']);
+  const sld_dt=rC(hs,['Sale Date','Date','SaleDate','PO Date']);
+  const sld_tot=rC(hs,['Total','Sales $','Revenue','Amount']);
+  const sld_cst=rC(hs,['Total Cost','Cost $','Cost']);
+  const sld_pft=rC(hs,['Profit','Profit $']);
+  const sld_cu=rC(hs,['Customer','Marketplace','Channel','Platform']);
+  const ns_ev=rC(hn,['Event','Event Name']);
+  const ns_dt=rC(hn,['Event Date','Date']);
+  const ns_vn=rC(hn,['Venue']);
+  const ns_qty=rC(hn,['Quantity','Qty','# of tickets','# of Tickets']);
+  const ns_cst=rC(hn,['Total Cost','Cost $','Cost']);
+  const ns_cat=rC(hn,['Category']);
+  const ns_sec=rC(hn,['Section']);
+  const ns_row=rC(hn,['Row']);
+  const ns_sf=rC(hn,['Seat From']);
+  const ns_st2=rC(hn,['Seat To']);
+
+  const invCl=invR.filter(r=>{const cat=(r[inv_ct]||'').toLowerCase(),ev=(r[inv_ev]||'').toLowerCase();return!cat.includes('parking')&&!ev.includes('parking')});
+  const eMap={};
+  invCl.forEach(r=>{const id=nI(r[inv_eid]||'');if(!id)return;if(!eMap[id])eMap[id]={eventId:id,eventName:r[inv_ev]||'',venue:r[inv_vn]||'',date:pD(r[inv_dt]),time:r[inv_tm]||'',rows:[]};eMap[id].rows.push(r)});
+  Object.values(eMap).forEach(e=>{
+    const tot=e.rows.length,priv=e.rows.filter(r=>(r[inv_st]||'').toLowerCase()==='private').length;
+    e.pctPrivate=tot>0?priv/tot:0;e.pctPrivateFmt=Math.round(e.pctPrivate*100)+'%';
+    e.isTB=e.rows.some(r=>(r[inv_nt]||'').toLowerCase().includes('tb'));
+    e.isSM=e.rows.some(r=>(r[inv_nt]||'').toLowerCase().includes('sm'));
+    e.eventUrl='';e.tdUrl='https://tradedesk.ticketmaster.com/marketplace/event/'+e.eventId;
+    for(const r of e.rows){const u=xU(r[inv_nt]);if(u){e.eventUrl=u;break}}
+  });
+
+  const slCl=sldR.map(r=>({eventId:nI(r[sld_eid]||''),eventName:r[sld_ev]||'',saleDate:pD(r[sld_dt]),total:parseFloat(r[sld_tot])||0,cost:parseFloat(r[sld_cst])||0,profit:parseFloat(r[sld_pft])||0,customer:(r[sld_cu]||'').toLowerCase()})).filter(r=>r.eventId);
+  const sByE={};
+  slCl.forEach(s=>{if(!sByE[s.eventId])sByE[s.eventId]={count:0,total:0,cost:0,profit:0,lastSale:null,list:[]};const a=sByE[s.eventId];a.count++;a.total+=s.total;a.cost+=s.cost;a.profit+=s.profit;if(s.saleDate&&(!a.lastSale||s.saleDate>a.lastSale))a.lastSale=s.saleDate;a.list.push(s)});
+  [1,3,7,14,30,60,90].forEach(d=>{const c=new Date(TODAY-d*86400000);Object.values(sByE).forEach(a=>{a['v'+d]=a.list.filter(s=>s.saleDate&&s.saleDate>=c).length})});
+  Object.values(sByE).forEach(a=>{const r3=a.v3/3,r7=a.v7/7;a.velTrend=a.v7===0&&a.v3===0?'No Sales':r3>r7*1.2?'▲ Accelerating':r3<r7*0.8?'▼ Decelerating':'→ Stable';a.lastSaleDays=a.lastSale?Math.round((TODAY-new Date(a.lastSale))/86400000):null});
+
+  // Step 1: All-time artist sales + historical profit from FULL sld CSV (all sales, including expired events)
+  const allTimeArtist={};
+  const histProfitByArtist={};
+  slCl.forEach(s=>{
+    // Prefer event name from sales CSV directly; fall back to inventory lookup
+    const evName=(s.eventName&&s.eventName.trim())?s.eventName:(eMap[s.eventId]?eMap[s.eventId].eventName:null);
+    if(!evName)return;
+    const nm=grpKey(evName);
+    const gk=grpKey(evName);
+    if(!allTimeArtist[nm])allTimeArtist[nm]=0;
+    allTimeArtist[nm]+=1;
+    if(!histProfitByArtist[gk])histProfitByArtist[gk]=0;
+    histProfitByArtist[gk]+=s.profit||0;
+  });
+
+  // Step 2: Current-inventory artist aggregation (for tour heat)
+  const artAgg={};
+  Object.values(eMap).forEach(e=>{
+    const nm=nN(e.eventName);
+    if(!artAgg[nm])artAgg[nm]={total:0,ids:[],totalV7:0,totalV30:0,totalProfit:0,totalCost:0,activeDates:0,allDates:0};
+    artAgg[nm].ids.push(e.eventId);
+    const s=sByE[e.eventId];
+    if(s){
+      artAgg[nm].total+=s.count;
+      artAgg[nm].totalV7+=s.v7||0;
+      artAgg[nm].totalV30+=s.v30||0;
+      artAgg[nm].totalProfit+=s.profit||0;
+      artAgg[nm].totalCost+=s.cost||0;
+      if((s.v30||0)>0)artAgg[nm].activeDates+=1; // for Tour Heat: only dates with recent sales
+      if((s.count||0)>0)artAgg[nm].allDates+=1;  // for perShowExpected: any date with any sales
+    }
+  });
+
+  // Step 3: Per-show expected uses allDates (lifetime average) so artists with no recent v30
+  // activity still register a meaningful benchmark instead of silently dropping to 0
+  const pShow={};
+  Object.entries(artAgg).forEach(([n,a])=>{
+    pShow[n]=a.allDates>0?a.total/a.allDates:0;
+  });
+
+  const earlyByEv={};
+  slCl.forEach(s=>{const e=eMap[s.eventId];if(!e||!e.date||!s.saleDate)return;const dO=Math.round((e.date-s.saleDate)/86400000);if(dO>=45){if(!earlyByEv[s.eventId])earlyByEv[s.eventId]=[];earlyByEv[s.eventId].push(s.saleDate)}});
+
+  const bldR=e=>{
+    const s=sByE[e.eventId]||{count:0,total:0,cost:0,profit:0,lastSale:null,list:[],v1:0,v3:0,v7:0,v14:0,v30:0,v60:0,v90:0,velTrend:'No Sales',lastSaleDays:null};
+    const nm=nN(e.eventName);const ps=pShow[nm]||0;
+    const early=earlyByEv[e.eventId]||[];const{clusters,triples}=cCl(early);
+    const pp=s.cost>0?s.profit/s.cost:0;const dt=dU(e.date);
+    const conf=clusters>=1&&s.v7>0;
+    const agg=artAgg[nm]||{totalV7:0,totalV30:0,totalCost:0,totalProfit:0,activeDates:0,ids:[],total:0};
+
+    // Component 1: Historical Brand — log-scaled all-time artist sales from full CSV
+    const allTimeSales=allTimeArtist[nm]||0;
+    const historicalBrand=Math.round(Math.log1p(allTimeSales)*3.0*10)/10;
+
+    // Component 2: Tour Heat — current momentum across all active dates
+    const activePct=agg.ids.length>0?agg.activeDates/agg.ids.length:0;
+    const artistProfitPct=agg.totalCost>0?agg.totalProfit/agg.totalCost:0;
+    const tourHeat=Math.round(((agg.totalV7*3.0)+(agg.totalV30*0.5)+(activePct*20)+(artistProfitPct*10))*10)/10;
+
+    // Component 3: Show Modifier — this specific date vs tour average
+    const salesRatio=ps>0?s.count/ps:0;
+    const showModifier=Math.round(((s.v3*5.0)+(s.v7*2.0)+(salesRatio*5))*10)/10;
+
+    // Combined projected demand
+    const baseDemand=historicalBrand+tourHeat+showModifier;
+    const demand=Math.round(baseDemand*(conf?1.35:1.0)*10)/10;
+
+    let reason='';
+    if(conf){
+      reason='Early signal confirmed — 3D: '+s.v3+', 7D: '+s.v7;
+    } else if(tourHeat>30&&showModifier<5){
+      reason='Hot tour, cold show — reprice';
+    } else if(tourHeat>30&&showModifier>=10){
+      reason='Hot tour, strong show — expand';
+    } else if(tourHeat>30&&showModifier>=5){
+      reason='Active tour, this show mid-pack';
+    } else if(historicalBrand>15&&tourHeat<10){
+      reason='Proven property, tour currently slow';
+    } else if(s.v3>0){
+      reason='Velocity: 3D: '+s.v3+', 7D: '+s.v7;
+    } else if(s.v7>0){
+      reason='Recent velocity — 7D: '+s.v7;
+    } else {
+      reason='Low current demand';
+    }
+    const mkt=Object.fromEntries(MKTS.map(m=>[m,(s.list||[]).filter(x=>x.customer.includes(m)).length]));
+    const artTotal=artAgg[nm]?artAgg[nm].total:0;
+    const eSalesCount=early.length;
+    const fSaleD=s.list&&s.list.length?new Date(Math.min(...s.list.filter(x=>x.saleDate).map(x=>x.saleDate.getTime()))):null;
+    const dBef=fSaleD&&e.date?Math.round((e.date-fSaleD)/86400000):null;
+    const hScore=eSalesCount>0?Math.round(eSalesCount*Math.max(clusters,1)*(dBef||0)/10)/10:0;
+    const showScore=showModifier;
+    const activeDates=artAgg[nm]?artAgg[nm].activeDates:0;
+    // Velocity trend for buy signal scoring
+    const r3rate=s.v3/3;
+    const r7rate=s.v7/7;
+    const isAccelerating=r3rate>r7rate*1.2;
+    // Signal path determination
+    const pathA=(s.pctPrivate||e.pctPrivate||0)>=0.50&&(s.v7||0)>=1;
+    const pathB=clusters>=2&&(s.v7||0)>=2;
+    const signalPath=(pathA&&pathB)?'Both':pathA?'Private':pathB?'Clusters':null;
+    return Object.assign({},e,s,{perShowExpected:ps,activeDates,totalArtistSales:artTotal,earlyClusters:clusters,earlyTriples:triples,earlySalesCount:eSalesCount,firstSaleDate:fSaleD,daysBeforeEventFirstSale:dBef,earlyHeatScore:hScore,confirmed:conf,demand,demandReason:reason,historicalBrand,tourHeat,showModifier,showScore,profitPct:pp,daysTil:dt,mktSales:mkt,isAccelerating,signalPath})
+  };
+
+  const allR=Object.values(eMap).map(bldR);
+  const mainR=allR.filter(e=>!e.isTB).sort((a,b)=>b.demand-a.demand);
+  const tbMR=allR.filter(e=>e.isTB);
+
+  // NS inventory (must stay in procData — uses raw nsR + column variables)
+  const nsCl=nsR.map(r=>({event:r[ns_ev]||'',date:pD(r[ns_dt]),venue:r[ns_vn]||'',qty:parseInt(r[ns_qty])||0,cost:parseFloat(r[ns_cst])||0,section:r[ns_sec]||'',rowNum:r[ns_row]||'',seatFrom:r[ns_sf]||'',seatTo:r[ns_st2]||'',isParking:(r[ns_cat]||'').toLowerCase().includes('parking')||(r[ns_ev]||'').toLowerCase().includes('parking')})).filter(r=>r.event);
+  const nsNP=nsCl.filter(r=>!r.isParking);
+  const nsPK=nsCl.filter(r=>r.isParking);
+  S._histProfitByArtist=histProfitByArtist;
+  S._allTimeArtist=allTimeArtist;
+  return buildDerived(mainR,tbMR,nsNP,nsPK,allTimeArtist,histProfitByArtist);
+}
+
+// Render helpers
+function aB(id,nm){
+  const i=esc(id),n=esc(nm).replace(/'/g,"&#39;");
+  const chk='<input type="checkbox" class="row-chk" data-eid="'+i+'" onchange="toggleSel(this)"'+(S.selected&&S.selected.has(id)?' checked':'')+' title="Select to hide">';
+  const isHL=!!S.highlighted[id];
+  const hlBtn='<button class="act act-hl'+(isHL?' act-hl-on':'')+'" onclick="toggleHighlight(\''+i+'\',\''+n+'\')" title="'+(isHL?'Remove from Team Review':'Add to Team Review')+'">'+(isHL?'★':'☆')+'</button>';
+  if(S.hidden[id]){return'<div class="actions">'+chk+'<button class="act act-unhide" onclick="dA(\'unhide\',\''+i+'\',\''+n+'\')">Unhide</button></div>'}
+  return'<div class="actions">'+chk+'<button class="act act-buy" onclick="dA(\'buy\',\''+i+'\',\''+n+'\')">Flag Buy</button><button class="act" onclick="dA(\'note\',\''+i+'\',\''+n+'\')">Note</button>'+hlBtn+'<button class="act act-hide" onclick="dA(\'hide\',\''+i+'\',\''+n+'\')">Hide</button></div>';
+}
+function uL(eu,tu){let h='<div style="display:flex;gap:3px">';if(tu)h+='<a href="'+esc(tu)+'" target="_blank" class="url-btn primary">TD &#8599;</a>';if(eu)h+='<a href="'+esc(eu)+'" target="_blank" class="url-btn">Primary &#8599;</a>';if(!tu&&!eu)h+='—';return h+'</div>'}
+function tag(c,t){return'<span class="tag tag-'+c+'">'+esc(t)+'</span>'}
+function uTag(t){return tag(t==='Critical'?'red':t==='Watch'?'orange':t==='On Pace'?'green':'gray',t)}
+function vC(v){return v&&v.includes('▲')?'c-up':v&&v.includes('▼')?'c-down':'c-gray'}
+function TH(){return'<thead><tr>'+[].slice.call(arguments).map(x=>'<th>'+x+'</th>').join('')+'</tr></thead>'}
+
+function bMain(rows){
+  if(!rows.length)return'<div class="placeholder">No events match current filters</div>';
+  let h='<table>'+TH('Event','Venue','Date','Time','% Priv','# Sales','Artist Sales','1D','3D','7D','14D','30D','60D','90D','Sales $','Cost $','Profit $','Profit %','Last Sale','Days Stale','vs Tour Avg','Show Score','Proj. Demand','Primary','Actions')+'<tbody>';
+  rows.forEach(r=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    const salesRatio=r.perShowExpected>0?r.count/r.perShowExpected:null;
+    const ratioColor=salesRatio===null?'#9ca3af':salesRatio>=1.5?'#16a34a':salesRatio>=1.0?'#0d9488':salesRatio>=0.5?'#d97706':'#dc2626';
+    const ratioDisplay=salesRatio===null?'—':salesRatio.toFixed(2)+'×';
+    const ratioTitle=salesRatio===null?'No tour average available':'This show: '+r.count+' sales | Tour avg: '+r.perShowExpected.toFixed(1)+' sales/active date | Ratio: '+ratioDisplay;
+    const showScoreColor=(r.showScore||0)>=15?'#16a34a':(r.showScore||0)>=8?'#0d9488':(r.showScore||0)>=3?'#d97706':'#dc2626';
+    h+='<tr><td>'+evLink+'</td><td><span class="cell-venue">'+esc(r.venue)+'</span></td><td class="num">'+fD(r.date)+'</td><td class="num" style="color:#6b7280">'+esc(r.time||'—')+'</td><td class="num">'+privFmt(r.pctPrivate)+'</td><td class="num">'+r.count+'</td><td class="num c-gray">'+(r.totalArtistSales||0)+'</td><td class="num '+(r.v1>0?'c-up':'')+'">'+r.v1+'</td><td class="num '+(r.v3>0?'c-up':'')+'">'+r.v3+'</td><td class="num">'+r.v7+'</td><td class="num">'+r.v14+'</td><td class="num">'+r.v30+'</td><td class="num">'+r.v60+'</td><td class="num">'+r.v90+'</td><td class="num">'+fM(r.total)+'</td><td class="num">'+fM(r.cost)+'</td><td class="num" style="font-weight:600">'+fM(r.profit)+'</td><td class="num">'+fP(r.profitPct)+'</td><td class="num">'+(r.lastSale?fD(r.lastSale):'—')+'</td><td class="num '+(r.lastSaleDays!==null&&r.lastSaleDays>30?'c-down':'')+'">'+( r.lastSaleDays!==null?r.lastSaleDays+'d':'—')+'</td><td class="num" style="color:'+ratioColor+';font-weight:600" title="'+ratioTitle+'">'+ratioDisplay+'</td><td class="num" style="color:'+showScoreColor+';font-weight:600" title="Show Score: velocity + sales vs tour avg. Range 0–35+.">'+(r.showScore||0).toFixed(1)+'</td><td class="num" style="font-weight:600" title="'+esc(r.demandReason)+'">'+r.demand.toFixed(1)+'</td><td>'+(r.eventUrl?'<a href="'+esc(r.eventUrl)+'" target="_blank" class="url-btn">Primary ↗</a>':'—')+'</td><td>'+aB(r.eventId,r.eventName)+'</td></tr>';
+  });
+  return h+'</tbody></table>'
+}
+
+function bTop250(rows){
+  if(!rows.length)return'<div class="placeholder">No events match current filters</div>';
+  const hpMap=S._histProfitByArtist||{};
+  const ataMap=S._allTimeArtist||{};
+  const withScores=rows.map(r=>{
+    const horizon=r.daysTil!==null&&r.daysTil>0?r.daysTil:0;
+    const hMult=horizon<=14?1.4:horizon<=30?1.1:horizon<=90?0.85:0.6;
+    const effDays=Math.min(horizon,90)*hMult;
+    const avgProfit=r.count>0?(r.profit||0)/r.count:0;
+    const lnScale=Math.max(Math.log1p(r.totalArtistSales||0),1);
+    const revPotential=Math.round((r.v7/7)*effDays*avgProfit*lnScale);
+    const baseDly=(r.v30||0)/30;
+    const curDly=(r.v7||0)/7;
+    const accel=Math.min(curDly/Math.max(baseDly,0.1),4);
+    const salesRatio=r.perShowExpected>0?Math.min((r.count||0)/r.perShowExpected,2):0.5;
+    const conf=1-Math.exp(-(r.count||0)/8);
+    const earlyBonus=Math.min((r.earlyClusters||0)*10,20);
+    const signal=Math.min(Math.round((accel*25)+(salesRatio*25)+(conf*30)+earlyBonus),100);
+    const _histSales=ataMap[grpKey(r.eventName)]||0;
+    const _histProfit=hpMap[grpKey(r.eventName)]||0;
+    return Object.assign({},r,{_revPotential:revPotential,_signal:signal,_histSales,_histProfit});
+  });
+  const ts=TOP_SORT[S.tab]||{col:'_revPotential',dir:'desc'};
+  const sorted=withScores.slice().sort((a,b)=>{const av=a[ts.col]??-Infinity,bv=b[ts.col]??-Infinity;return ts.dir==='desc'?bv-av:av-bv}).slice(0,300);
+  const isA=k=>ts.col===k;
+  const PP_TIP='Projected profit at current pace over remaining selling window, scaled by show size. Formula: (7D orders ÷ 7) × horizon-adjusted days × avg profit per sale × scale factor. Scale factor = max(ln(1 + artist sales), 1) — floors at 1× for small shows, rewards proven large productions. Horizon discount: ≤14d = 1.4×, 15–30d = 1.1×, 31–90d = 0.85×, >90d = 0.6×.';
+  const SIG_TIP='Momentum score 0–100. Combines: velocity acceleration vs 30-day baseline, this show\'s sales vs tour peers, sample size confidence, early-cluster bonus. Hover a row value for its breakdown.';
+  const cols=[
+    {k:'_rank',        l:'#',               sortable:false},
+    {k:'eventName',    l:'Event',            sortable:false},
+    {k:'venue',        l:'Venue',            sortable:false},
+    {k:'date',         l:'Date',             sortable:true,  t:'Event date'},
+    {k:'time',         l:'Time',             sortable:false},
+    {k:'daysTil',      l:'Days To',          sortable:true,  t:'Days until event'},
+    {k:'pctPrivate',   l:'Private',          sortable:true,  t:'% of inventory listed as private'},
+    {k:'count',        l:'Event Sales',      sortable:true,  t:'Total sales for this specific show'},
+    {k:'totalArtistSales',l:'Artist Sales',  sortable:true,  t:'Total sales across all current shows for this artist in this inventory'},
+    {k:'v7',           l:'7D',               sortable:true,  t:'Orders placed in last 7 days'},
+    {k:'v30',          l:'30D',              sortable:true,  t:'Orders placed in last 30 days'},
+    {k:'profit',       l:'Profit $',         sortable:true,  t:'Total profit for this show'},
+    {k:'profitPct',    l:'%',                sortable:true,  t:'Profit margin for this show'},
+    {k:'_histSales',   l:'Hist. Sales',      sortable:true,  t:'Total all-time transaction count for this artist across your entire sales CSV'},
+    {k:'_histProfit',  l:'Hist. Profit',     sortable:true,  t:'Total all-time profit for this artist across your entire sales CSV'},
+    {k:'lastSaleDays', l:'Stale',            sortable:true,  t:'Days since last sale on this show'},
+    {k:'_revPotential',l:'Pot. Profit',      sortable:true,  t:PP_TIP},
+    {k:'_signal',      l:'Signal',           sortable:true,  t:SIG_TIP},
+  ];
+  const thHtml=cols.map(c=>{
+    const isRP=c.k==='_revPotential',isSig=c.k==='_signal';
+    const active=isA(c.k);
+    const arrow=active?(ts.dir==='desc'?' ▼':' ▲'):'';
+    const base='white-space:nowrap;'+(isRP?'background:#f0fdf4;color:#15803d;border-bottom:2px solid #86efac;':isSig?'background:#eff6ff;color:#1d4ed8;border-bottom:2px solid #93c5fd;':'');
+    if(!c.sortable)return'<th style="'+base+'" title="'+(c.t||'')+'">'+c.l+'</th>';
+    return'<th style="'+base+'cursor:pointer;user-select:none;'+(active?'font-weight:700;text-decoration:underline;':'')+'" title="'+(c.t||'')+(active?' — click to reverse':' — click to sort')+'" onclick="sortTop(\''+c.k+'\')">'+c.l+arrow+'</th>';
+  }).join('')+'<th>Actions</th>';
+  let h='<table><thead><tr>'+thHtml+'</tr></thead><tbody>';
+  // Chip helper: wraps a value in a subtle inline pill — Apple/Stripe style
+  sorted.forEach((r,i)=>{
+    const rank=i+1;
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    // TB / DS badge — readable text, subtle background, vertically centered
+    const badgeBg=r.isTB?'rgba(245,158,11,0.13)':'rgba(99,102,241,0.10)';
+    const badgeTc=r.isTB?'#92400e':'#3730a3';
+    const badge='<span style="background:'+badgeBg+';color:'+badgeTc+';border-radius:3px;padding:1px 4px;font-size:9px;font-weight:700;letter-spacing:0.5px;vertical-align:middle;margin-left:5px">'+(r.isTB?'TB':'DS')+'</span>';
+    // Days to event — chip only when truly urgent
+    const staleD=r.lastSaleDays;
+    const daysVal=r.daysTil!==null?r.daysTil:'—';
+    const daysDisp=r.daysTil!==null&&r.daysTil<=7?ch(daysVal,'#fee2e2','#b91c1c'):r.daysTil!==null&&r.daysTil<=14?ch(daysVal,'#fff7ed','#c2410c'):daysVal;
+    const privDisp=privFmt(r.pctPrivate);
+    // 7D velocity — chip when strong
+    const v7Disp=r.v7>=10?ch(r.v7,'#dcfce7','#15803d'):r.v7>=4?ch(r.v7,'#f0fdf4','#166534'):'<span style="font-weight:'+(r.v7>0?600:400)+';color:'+(r.v7>0?'#374151':'#9ca3af')+'">'+r.v7+'</span>';
+    // Profit $ — chip for standout values
+    const profDisp=r.profit>=1000?ch(fM(r.profit),'#dcfce7','#15803d'):r.profit>=300?ch(fM(r.profit),'#f0fdf4','#166534'):'<span style="font-weight:600;color:'+(r.profit>0?'#374151':'#9ca3af')+'">'+fM(r.profit)+'</span>';
+    // Hist. Profit — chip for notable history
+    const hpDisp=r._histProfit>=5000?ch(fM(r._histProfit),'#dcfce7','#15803d'):r._histProfit>0?'<span style="color:#374151">'+fM(r._histProfit)+'</span>':'<span style="color:#d1d5db">—</span>';
+    // Stale — chip escalating by severity
+    const staleDisp=staleD===null?'<span style="color:#d1d5db">—</span>':staleD>=30?ch(staleD,'#fecaca','#991b1b'):staleD>=21?ch(staleD,'#fed7aa','#9a3412'):staleD>=14?ch(staleD,'#fde68a','#92400e'):staleD>=7?ch(staleD,'#fef9c3','#a16207'):'<span style="color:#6b7280">'+staleD+'</span>';
+    // Profit Potential — chip for standout values
+    const rp=r._revPotential||0;
+    const rpDisp=rp>=2000?ch(fM(rp),'#dcfce7','#15803d'):rp>=500?ch(fM(rp),'#f0fdf4','#166534'):rp>0?'<span style="font-weight:600;color:#374151">'+fM(rp)+'</span>':'<span style="color:#d1d5db">—</span>';
+    // Signal — mini bar + chip on number
+    const sig=r._signal||0;
+    const sigBarColor=sig>=70?'#6366f1':sig>=40?'#14b8a6':sig>=20?'#f59e0b':'#d1d5db';
+    const sigNumDisp=sig>=70?ch(sig,'rgba(99,102,241,0.10)','#3730a3'):sig>=40?ch(sig,'rgba(20,184,166,0.10)','#0f766e'):sig>0?'<span style="color:#6b7280;font-weight:600">'+sig+'</span>':'<span style="color:#d1d5db">0</span>';
+    const sigTip='Accel: '+(Math.min((r.v7/7)/Math.max((r.v30||0)/30,0.1),4)).toFixed(2)+'× | vs tour avg: '+(r.perShowExpected>0?(r.count/r.perShowExpected).toFixed(2):'n/a')+'× | confidence: '+((1-Math.exp(-(r.count||0)/8))*100).toFixed(0)+'%';
+    const sigCell='<div style="display:inline-flex;align-items:center;gap:6px" title="'+sigTip+'">'
+      +'<div style="width:30px;height:3px;background:#e5e7eb;border-radius:2px;overflow:hidden;flex-shrink:0"><div style="width:'+sig+'%;height:100%;background:'+sigBarColor+'"></div></div>'
+      +sigNumDisp+'</div>';
+    h+='<tr>';
+    h+='<td class="num" style="white-space:nowrap;font-weight:'+(rank<=50?700:500)+';color:#111827">'+rank+badge+'</td>';
+    h+='<td>'+evLink+'</td>';
+    h+='<td><span class="cell-venue">'+esc(r.venue)+'</span></td>';
+    h+='<td class="num">'+fD(r.date)+'</td>';
+    h+='<td class="num" style="color:#9ca3af">'+(r.time?esc(r.time.replace(/:00(\s)/,'$1')):'—')+'</td>';
+    h+='<td class="num">'+daysDisp+'</td>';
+    h+='<td class="num">'+privDisp+'</td>';
+    const evSalesDisp=r.count>=15?ch(r.count,'#dcfce7','#15803d'):r.count>=7?ch(r.count,'#f0fdf4','#166534'):r.count>=3?'<span style="font-weight:600;color:#374151">'+r.count+'</span>':'<span style="color:'+(r.count>0?'#6b7280':'#d1d5db')+'">'+r.count+'</span>';
+    const as=r.totalArtistSales||0;
+    const artSalesDisp=as>=100?ch(as,'#dcfce7','#15803d'):as>=30?ch(as,'#f0fdf4','#166534'):as>=10?'<span style="font-weight:600;color:#374151">'+as+'</span>':'<span style="color:#9ca3af">'+as+'</span>';
+    h+='<td class="num">'+evSalesDisp+'</td>';
+    h+='<td class="num">'+artSalesDisp+'</td>';
+    h+='<td class="num">'+v7Disp+'</td>';
+    h+='<td class="num" style="color:#6b7280">'+r.v30+'</td>';
+    h+='<td class="num">'+profDisp+'</td>';
+    h+='<td class="num" style="color:#6b7280">'+fP(r.profitPct)+'</td>';
+    h+='<td class="num" style="color:#9ca3af">'+(r._histSales||0).toLocaleString()+'</td>';
+    h+='<td class="num">'+hpDisp+'</td>';
+    h+='<td class="num">'+staleDisp+'</td>';
+    h+='<td class="num" title="'+PP_TIP+'">'+rpDisp+'</td>';
+    h+='<td>'+sigCell+'</td>';
+    h+='<td>'+aB(r.eventId,r.eventName)+'</td>';
+    h+='</tr>';
+  });
+  return h+'</tbody></table>';
+}
+function bMainTB(rows){
+  if(!rows.length)return'<div class="placeholder">No events match current filters</div>';
+  let h='<table>'+TH('TB/DS','Event','Venue','Date','Time','% Priv','# Sales','Artist Sales','1D','3D','7D','14D','30D','60D','90D','Sales $','Cost $','Profit $','Profit %','Last Sale','Days Stale','vs Tour Avg','Show Score','Proj. Demand','Primary','Actions')+'<tbody>';
+  rows.forEach(r=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    const salesRatioTB=r.perShowExpected>0?r.count/r.perShowExpected:null;
+    const rColorTB=salesRatioTB===null?'#9ca3af':salesRatioTB>=1.5?'#16a34a':salesRatioTB>=1.0?'#0d9488':salesRatioTB>=0.5?'#d97706':'#dc2626';
+    const rDisplayTB=salesRatioTB===null?'—':salesRatioTB.toFixed(2)+'×';
+    const rTitleTB=salesRatioTB===null?'No tour average available':'This show: '+r.count+' sales | Tour avg: '+r.perShowExpected.toFixed(1)+' sales/active date | Ratio: '+rDisplayTB;
+    const ssCTB=(r.showScore||0)>=15?'#16a34a':(r.showScore||0)>=8?'#0d9488':(r.showScore||0)>=3?'#d97706':'#dc2626';
+    h+='<tr><td>'+tag(r.isTB?'tb':'blue',r.tbDs||'DS')+'</td><td>'+evLink+'</td><td><span class="cell-venue">'+esc(r.venue)+'</span></td><td class="num">'+fD(r.date)+'</td><td class="num" style="color:#6b7280">'+esc(r.time||'—')+'</td><td class="num">'+privFmt(r.pctPrivate)+'</td><td class="num">'+r.count+'</td><td class="num c-gray">'+(r.totalArtistSales||0)+'</td><td class="num '+(r.v1>0?'c-up':'')+'">'+r.v1+'</td><td class="num '+(r.v3>0?'c-up':'')+'">'+r.v3+'</td><td class="num">'+r.v7+'</td><td class="num">'+r.v14+'</td><td class="num">'+r.v30+'</td><td class="num">'+r.v60+'</td><td class="num">'+r.v90+'</td><td class="num">'+fM(r.total)+'</td><td class="num">'+fM(r.cost)+'</td><td class="num" style="font-weight:600">'+fM(r.profit)+'</td><td class="num">'+fP(r.profitPct)+'</td><td class="num">'+(r.lastSale?fD(r.lastSale):'—')+'</td><td class="num '+(r.lastSaleDays!==null&&r.lastSaleDays>30?'c-down':'')+'">'+( r.lastSaleDays!==null?r.lastSaleDays+'d':'—')+'</td><td class="num" style="color:'+rColorTB+';font-weight:600" title="'+rTitleTB+'">'+rDisplayTB+'</td><td class="num" style="color:'+ssCTB+';font-weight:600" title="Show Score: velocity + sales vs tour avg. Range 0–35+.">'+(r.showScore||0).toFixed(1)+'</td><td class="num" style="font-weight:600" title="'+esc(r.demandReason)+'">'+r.demand.toFixed(1)+'</td><td>'+(r.eventUrl?'<a href="'+esc(r.eventUrl)+'" target="_blank" class="url-btn">Primary ↗</a>':'—')+'</td><td>'+aB(r.eventId,r.eventName)+'</td></tr>';
+  });
+  return h+'</tbody></table>'
+}
+
+function bReview(rows){
+  if(!rows.length)return'<div class="placeholder" style="padding:40px;text-align:center"><div style="font-size:32px;margin-bottom:12px">☆</div><div style="font-weight:600;color:#374151;margin-bottom:6px">No events highlighted yet</div><div style="color:#9ca3af;font-size:13px">Click the ☆ button on any event in any view to add it here for your team to review.</div></div>';
+  let h='<table>'+TH('Event','Venue','Date','Time','# Sales','Sales $','Profit $','%','% Private','7D','Demand','Links','Actions')+'<tbody>';
+  rows.forEach(r=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    const profDisp=(r.profit||0)>=1000?ch(fM(r.profit),'#dcfce7','#15803d'):(r.profit||0)>=300?'<span style="font-weight:600;color:#16a34a">'+fM(r.profit)+'</span>':'<span style="color:#374151">'+fM(r.profit)+'</span>';
+    h+='<tr class="hl-row">'
+      +'<td>'+evLink+'</td>'
+      +'<td><span class="cell-venue">'+esc(r.venue)+'</span></td>'
+      +'<td class="num">'+fD(r.date)+'</td>'
+      +'<td class="num" style="color:#6b7280">'+(r.time?esc(r.time.replace(/:00(\s)/,'$1')):'—')+'</td>'
+      +'<td class="num">'+r.count+'</td>'
+      +'<td class="num">'+fM(r.total)+'</td>'
+      +'<td class="num">'+profDisp+'</td>'
+      +'<td class="num" style="color:#6b7280">'+fP(r.profitPct)+'</td>'
+      +'<td class="num">'+privFmt(r.pctPrivate)+'</td>'
+      +'<td class="num" style="color:'+(r.v7>0?'#16a34a':'#9ca3af')+'">'+r.v7+'</td>'
+      +'<td class="num" style="color:#6b7280">'+Math.round(r.demand||0)+'</td>'
+      +'<td>'+uL(r.eventUrl,r.tdUrl)+'</td>'
+      +'<td>'+aB(r.eventId,r.eventName)+'</td>'
+      +'</tr>';
+  });
+  return h+'</tbody></table>';
+}
+function bSum(d){
+  const cr=d.nsUrg.filter(r=>r.urgencyTier==='Critical').length,wt=d.nsUrg.filter(r=>r.urgencyTier==='Watch').length,aR=d.nsUrg.reduce((s,r)=>s+r.dollarAtRisk,0);
+  const sc=(title,val,sub,color,tab)=>'<div class="sum-card'+(tab?' sum-card-link':'')+'"'+(tab?' onclick="sT(\''+tab+'\')" title="Go to '+esc(TTS[tab]||tab)+'"':'')+'>'+
+    '<div class="sum-card-title">'+title+(tab?' <span style="font-size:9px;color:#a78bfa">↗</span>':'')+'</div>'+
+    '<div class="sum-card-val"'+(color?' style="color:'+color+'"':'')+'>'+val+'</div>'+
+    '<div class="sum-card-sub">'+sub+'</div></div>';
+  const cards='<div class="sum-grid">'+
+    sc('NS Positions',d.nsUrg.length,fM(d.tNC)+' committed capital',null,'ns_urg')+
+    sc('Critical NS',cr,fM(aR)+' at risk','#dc2626','ns_urg')+
+    sc('Watch NS',wt,'Needs monitoring','#d97706','ns_urg')+
+    sc('Buy Signals',d.buyS.length,d.buyS.filter(r=>r.confirmed).length+' confirmed','#7c3aed','buy')+
+    sc('Underperforming',d.up1.length,'1+ sales, below expected','#d97706','up1')+
+    sc('TB Alerts',d.tbAl.length,'Software health issues','#dc2626','tb')+
+  '</div>';
+  const artMap={};
+  d.mainR.forEach(r=>{const nm=nN(r.eventName);if(!artMap[nm])artMap[nm]={name:r.eventName,venues:new Set(),count:0,sales:0,rev:0,cost:0,profit:0,events:[]};artMap[nm].venues.add(r.venue);artMap[nm].count++;artMap[nm].sales+=r.count;artMap[nm].rev+=r.total;artMap[nm].cost+=r.cost;artMap[nm].profit+=r.profit;artMap[nm].events.push(r)});
+  const artRows=Object.values(artMap).sort((a,b)=>b.sales-a.sales);
+  const tabRows=[
+    {label:'Main',id:'main',n:d.mainR.length},
+    {label:'Top 250',id:'top250',n:d.top250.length},
+    {label:'Top 300 Inc TB',id:'top300tb',n:d.top300tb.length},
+    {label:'Top 300 Profit Inc TB',id:'top300profit',n:d.top300profit.length},
+    {label:'Top 250 Profitable (TB)',id:'top250ptb',n:d.top250ptb.length},
+    {label:'Top 250 Profitable (Non-TB)',id:'top250pnontb',n:d.top250pnontb.length},
+    {label:'Grouped Events (5+)',id:'grouped',n:d.groupedR.length},
+    {label:'Buy Signal',id:'buy',n:d.buyS.length},
+    {label:'NS Urgency',id:'ns_urg',n:d.nsUrg.length},
+    {label:'Underperform 1+ Sales',id:'up1',n:d.up1.length},
+    {label:'Underperform 0 Sales',id:'up0',n:d.up0.length},
+    {label:'Velocity Divergence',id:'velDiv',n:d.velDiv.length},
+    {label:'50%+ Private',id:'p50',n:d.p50.length},
+    {label:'Early Demand',id:'early',n:d.earlyD.length},
+    {label:'TB Monitor',id:'tb',n:d.tbAl.length},
+    {label:'Funny Bone',id:'funnybone',n:d.funnyBone.length},
+    {label:'Vegas',id:'vegas',n:d.vegas.length},
+    {label:'Opry',id:'opry',n:d.opry.length},
+    {label:'Disney on Ice',id:'disney',n:d.disney.length},
+    {label:'Harlem Globetrotters',id:'harlem',n:d.harlem.length},
+    {label:'Seattle Thunderbirds',id:'stb',n:d.stb.length},
+    {label:'Extreme Dwarfanator',id:'dwarfanator',n:d.dwarfanator.length},
+    {label:'Shen Yun',id:'shenyun',n:d.shenYun.length},
+    {label:'Phantom of the Opera',id:'phantom',n:d.phantom.length},
+    {label:'Lion King',id:'lionking',n:d.lionKing.length}
+  ];
+  // Artist / Group Summary section
+  let art='<div style="flex:1;min-width:0">';
+  art+='<div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Artist / Group Summary</div>';
+  art+='<table><thead><tr><th>Event Name</th><th>Venues</th><th># of Events</th><th># Sales</th><th>Sales $</th><th>Cost $</th><th>Profit $</th><th>Profit %</th></tr></thead><tbody>';
+  artRows.forEach((a,i)=>{
+    const pp=a.rev>0?a.profit/a.rev:0;
+    const uid='ag'+i;
+    const multi=a.venues.size>1;
+    const venCell=multi
+      ?'<span style="color:#6b7280">Multiple ('+a.venues.size+')</span> <button class="act" style="font-size:10px" onclick="var el=document.getElementById(\''+uid+'\');el.style.display=el.style.display===\'none\'?\'table-row\':\'none\';this.textContent=el.style.display===\'none\'?\'Show events ▼\':\'Hide ▲\'">Show events ▼</button>'
+      :esc([...a.venues][0]||'');
+    art+='<tr><td style="font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.name)+'</td><td>'+venCell+'</td><td class="num c-purple" style="font-weight:600">'+a.count+'</td><td class="num">'+a.sales+'</td><td class="num">'+fM(a.rev)+'</td><td class="num">'+fM(a.cost)+'</td><td class="num" style="font-weight:600">'+fM(a.profit)+'</td><td class="num">'+fP(pp)+'</td></tr>';
+    if(multi){
+      art+='<tr id="'+uid+'" style="display:none"><td colspan="8" style="padding:0;border-bottom:2px solid #e5e7eb"><div style="padding:8px 16px 12px;background:#f9fafb"><table style="font-size:11px;width:100%"><thead><tr><th>Event</th><th>Venue</th><th>Date</th><th>Time</th><th># Sales</th><th>Sales $</th><th>Cost $</th><th>Profit $</th><th>Profit %</th></tr></thead><tbody>';
+      a.events.slice().sort((x,y)=>(x.date||0)-(y.date||0)).forEach(r=>{
+        const lnk=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" style="color:#7c3aed;text-decoration:none;font-weight:500">'+esc(r.eventName)+'</a>':esc(r.eventName);
+        art+='<tr><td>'+lnk+'</td><td style="color:#6b7280;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.venue)+'</td><td class="num">'+fD(r.date)+'</td><td class="num" style="color:#6b7280">'+esc(r.time||'—')+'</td><td class="num">'+r.count+'</td><td class="num">'+fM(r.total)+'</td><td class="num">'+fM(r.cost)+'</td><td class="num" style="font-weight:600">'+fM(r.profit)+'</td><td class="num">'+fP(r.profitPct)+'</td></tr>';
+      });
+      art+='</tbody></table></div></td></tr>';
+    }
+  });
+  art+='</tbody></table></div>';
+  // Tab Counts section — visually separated panel
+  let tc='<div style="width:300px;flex-shrink:0;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px">';
+  tc+='<div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Tab Counts</div>';
+  tc+='<table style="width:100%"><thead><tr><th style="text-align:left">Tab</th><th style="text-align:right;padding-right:6px"># Events</th><th></th></tr></thead><tbody>';
+  tabRows.forEach(t=>{
+    tc+='<tr><td style="font-size:12px;padding:3px 0">'+esc(t.label)+'</td><td class="num c-purple" style="font-weight:600;padding-right:6px">'+t.n+'</td>';
+    tc+='<td style="text-align:right"><button class="act" style="font-size:10px;padding:1px 6px" onclick="sT(\''+t.id+'\')">Go →</button></td></tr>';
+  });
+  tc+='</tbody></table></div>';
+  return cards+'<div style="padding:0 20px 20px;display:flex;gap:20px;align-items:flex-start">'+art+tc+'</div>'
+}
+
+function bNSSum(d){
+  const npE=[...new Set(d.nsNP.map(r=>r.event))].length,pE=[...new Set(d.nsPK.map(r=>r.event))].length;
+  const npT=d.nsNP.reduce((s,r)=>s+r.qty,0),pT=d.nsPK.reduce((s,r)=>s+r.qty,0);
+  const npV=d.nsNP.reduce((s,r)=>s+r.cost,0),pV=d.nsPK.reduce((s,r)=>s+r.cost,0);
+  const rptDate=new Date(TODAY);
+  const rptFmt=(rptDate.getMonth()+1).toString().padStart(2,'0')+'/'+(rptDate.getDate()).toString().padStart(2,'0')+'/'+rptDate.getFullYear().toString().slice(2);
+  const cards='<div class="sum-grid" style="grid-template-columns:repeat(5,1fr)">'+
+    '<div class="sum-card"><div class="sum-card-title">Report Date</div><div class="sum-card-val" style="font-size:18px">'+rptFmt+'</div><div class="sum-card-sub">Data as of today</div></div>'+
+    '<div class="sum-card"><div class="sum-card-title">Non-Parking Events</div><div class="sum-card-val">'+npE+'</div><div class="sum-card-sub">'+npT.toLocaleString()+' tickets</div></div>'+
+    '<div class="sum-card"><div class="sum-card-title">Non-Parking Value</div><div class="sum-card-val">'+fM(npV)+'</div><div class="sum-card-sub">At cost</div></div>'+
+    '<div class="sum-card"><div class="sum-card-title">Parking Events</div><div class="sum-card-val">'+pE+'</div><div class="sum-card-sub">'+pT.toLocaleString()+' tickets</div></div>'+
+    '<div class="sum-card"><div class="sum-card-title">Parking Value</div><div class="sum-card-val">'+fM(pV)+'</div><div class="sum-card-sub">At cost</div></div>'+
+  '</div>';
+  // Aggregate by event+date+venue
+  const aggNS=rows=>{const m={};rows.forEach(r=>{const k=(r.event||'')+'__'+(r.date?r.date.toISOString().slice(0,10):'');if(!m[k])m[k]={event:r.event,date:r.date,venue:r.venue,qty:0,cost:0};m[k].qty+=r.qty;m[k].cost+=r.cost});return Object.values(m).sort((a,b)=>b.cost-a.cost)};
+  const nsRow=r=>'<tr><td style="font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.event||'')+'</td><td class="num">'+fD(r.date)+'</td><td><span class="cell-venue">'+esc(r.venue||'')+'</span></td><td class="num">'+r.qty+'</td><td class="num" style="font-weight:600">'+fM(r.cost)+'</td><td class="num">'+(dU(r.date)!==null?dU(r.date)+'d':'—')+'</td></tr>';
+  const nsTable=(title,rows)=>{
+    const agg=aggNS(rows);
+    return'<div style="padding:0 20px 24px"><div style="font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">'+title+'</div>'+
+    (agg.length?'<table>'+TH('Event','Date','Venue','# of Tickets','$ Value of Tickets','Days Until Event')+'<tbody>'+agg.map(nsRow).join('')+'</tbody></table>':'<div class="placeholder">No positions</div>')+
+    '</div>'};
+  return cards+nsTable('All Non-Parking Events By Value',d.nsNP)+nsTable('All Parking Events By Value',d.nsPK)
+}
+
+// Shared columns for grouped-property sub-tables (still used by bGroupedProp)
+const _grpCols=['Event','Venue','Date','Time','% Priv','# Sales','Artist Sales','1D','3D','7D','14D','30D','60D','90D','Sales $','Cost $','Profit $','Profit %','Last Sale','Days Stale','Proj. Demand','Actions'];
+function _evRow(r,ncols){
+  const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none;font-size:11.5px" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" style="font-size:11.5px" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+  return'<tr><td>'+evLink+'</td><td><span class="cell-venue">'+esc(r.venue)+'</span></td><td class="num">'+fD(r.date)+'</td><td class="num" style="color:#6b7280">'+esc(r.time||'—')+'</td><td class="num">'+privFmt(r.pctPrivate)+'</td><td class="num">'+r.count+'</td><td class="num c-gray">'+(r.totalArtistSales||0)+'</td><td class="num '+(r.v1>0?'c-up':'')+'">'+r.v1+'</td><td class="num '+(r.v3>0?'c-up':'')+'">'+r.v3+'</td><td class="num">'+r.v7+'</td><td class="num">'+r.v14+'</td><td class="num">'+r.v30+'</td><td class="num">'+r.v60+'</td><td class="num">'+r.v90+'</td><td class="num">'+fM(r.total)+'</td><td class="num">'+fM(r.cost)+'</td><td class="num" style="font-weight:600">'+fM(r.profit)+'</td><td class="num">'+fP(r.profitPct)+'</td><td class="num">'+(r.lastSale?fD(r.lastSale):'—')+'</td><td class="num '+(r.lastSaleDays!==null&&r.lastSaleDays>30?'c-down':'')+'">'+( r.lastSaleDays!==null?r.lastSaleDays+'d':'—')+'</td><td class="num" style="font-weight:600" title="'+esc(r.demandReason)+'">'+r.demand.toFixed(1)+'</td><td>'+aB(r.eventId,r.eventName)+'</td></tr>'
+}
+function bGrouped(rows){
+  if(!rows.length)return'<div class="placeholder">No artists with 5+ events found</div>';
+  const sorted=[...rows].sort((a,b)=>{const v=r=>r[GRP_SORT.col]!=null?r[GRP_SORT.col]:0;return GRP_SORT.dir==='desc'?v(b)-v(a):v(a)-v(b);});
+  const cols=[
+    {k:'eventName',  l:'Artist / Event',      t:'',sortable:false},
+    {k:'count',      l:'# Shows',             t:'Total shows in current inventory',sortable:true},
+    {k:'activePct',  l:'% listings 1+ sale',  t:'% of shows in this property that have at least 1 sale',sortable:true},
+    {k:'totalV7',    l:'7D Orders',           t:'Total orders across all dates in last 7 days — default sort',sortable:true},
+    {k:'totalSales', l:'# Sales',             t:'Total all-time sales count across all shows',sortable:true},
+    {k:'totalCost',  l:'Cost $',              t:'Total cost across all shows',sortable:true},
+    {k:'totalRev',   l:'Sales $',             t:'Total revenue across all shows',sortable:true},
+    {k:'totalProfit',l:'Profit $',            t:'Total profit across all shows',sortable:true},
+    {k:'profitPct',  l:'Profit %',            t:'Overall profit margin',sortable:true},
+    {k:'histProfit', l:'Hist. Profit',        t:'Profit from past shows (already performed) in your inventory export',sortable:true},
+    {k:'tourDemand', l:'Tour Demand',         t:'Combined score: velocity + revenue + scale + brand + profit. Hover for breakdown.',sortable:true},
+  ];
+  const thHtml=cols.map(c=>{
+    if(!c.sortable)return'<th>'+c.l+'</th>';
+    const active=GRP_SORT.col===c.k;
+    const arrow=active?(GRP_SORT.dir==='desc'?' ▼':' ▲'):'';
+    return'<th style="cursor:pointer;user-select:none;white-space:nowrap;'+(active?'color:#7c3aed;':'')+'" title="'+c.t+(active?' (click to reverse)':' (click to sort by this)')+'" onclick="sortGrp(\''+c.k+'\')">'+c.l+arrow+'</th>';
+  }).join('')+'<th>Actions</th>';
+  let h='<table><thead><tr>'+thHtml+'</tr></thead><tbody>';
+  sorted.forEach((r,i)=>{
+    const uid='grp'+i;
+    const evs=r.events||[];
+    const isA=col=>GRP_SORT.col===col;
+    h+='<tr class="grp-hdr" style="cursor:pointer" onclick="(function(el,btn){const show=el.style.display===\'none\';el.style.display=show?\'table-row\':\'none\';btn.textContent=show?\'▲\':\'▼\'})(document.getElementById(\'d'+uid+'\'),this.querySelector(\'.gt\'))">';
+    h+='<td style="font-weight:600;color:#111827;max-width:220px;overflow:hidden;text-overflow:ellipsis" title="'+esc(r.eventName)+'"><span class="gt" style="font-size:11px;color:#9ca3af;margin-right:5px">▼</span>'+esc(r.eventName)+'</td>';
+    h+='<td class="num" style="color:#7c3aed;font-weight:'+(isA('count')?700:500)+'">'+r.count+'</td>';
+    h+='<td class="num" style="font-weight:'+(isA('activePct')?700:400)+'">'+Math.round((r.activePct||0)*100)+'%</td>';
+    h+='<td class="num" style="color:'+(r.totalV7>0?'#16a34a':'#9ca3af')+';font-weight:'+(isA('totalV7')?700:600)+';'+(isA('totalV7')?'text-decoration:underline;':'')+'">'+(r.totalV7||0)+'</td>';
+    h+='<td class="num" style="font-weight:'+(isA('totalSales')?700:400)+'">'+(r.totalSales||0)+'</td>';
+    h+='<td class="num" style="font-weight:'+(isA('totalCost')?700:400)+'">'+fM(r.totalCost||0)+'</td>';
+    h+='<td class="num" style="font-weight:'+(isA('totalRev')?700:400)+'">'+fM(r.totalRev||0)+'</td>';
+    h+='<td class="num" style="color:'+(r.totalProfit>0?'#16a34a':'#9ca3af')+';font-weight:'+(isA('totalProfit')?700:600)+'">'+fM(r.totalProfit||0)+'</td>';
+    h+='<td class="num" style="font-weight:'+(isA('profitPct')?700:400)+'">'+fP(r.profitPct)+'</td>';
+    h+='<td class="num" style="color:'+((r.histProfit||0)>0?'#16a34a':(r.histProfit||0)<0?'#dc2626':'#9ca3af')+';font-weight:'+(isA('histProfit')?700:500)+'" title="Total profit across all sales for this artist in the sales CSV">'+((r.histProfit||0)!==0?fM(r.histProfit||0):'—')+'</td>';
+    h+='<td class="num" style="font-weight:'+(isA('tourDemand')?700:400)+'" title="Tour Demand: '+r.tourDemand+' | Velocity: '+(r.velocityComponent||0)+' | Revenue: '+(r.revenueComponent||0)+' | Scale: '+(r.scaleComponent||0)+' | Brand: '+(r.brandComponent||0)+' | Profit: '+(r.profitComponent||0)+'">'+(r.tourDemand||0).toFixed(1)+'</td>';
+    h+='<td>'+aB(r.eventId,r.eventName)+'</td></tr>';
+    // Expandable detail row
+    h+='<tr id="d'+uid+'" style="display:none"><td colspan="12" style="padding:0;border-bottom:2px solid #e5e7eb">'; 
+    h+='<div style="padding:6px 16px 12px;background:#f8fafc">';
+    h+='<table style="font-size:11.5px;width:100%"><thead><tr style="background:#eff2fb"><th style="text-align:left;padding:5px 8px">Event</th><th>Venue</th><th>Date</th><th>Time</th><th># Sales</th><th>Sales $</th><th>Cost $</th><th>Profit $</th><th>Profit %</th><th>% Priv</th><th style="color:#0d9488">vs Tour Avg</th><th>Show Score</th><th>Links</th><th>Actions</th></tr></thead><tbody>';
+    evs.slice().sort((a,b)=>(a.date||0)-(b.date||0)).forEach(ev=>{
+      const lnk=ev.tdUrl?'<a href="'+esc(ev.tdUrl)+'" target="_blank" style="color:#111827;text-decoration:none;font-weight:500">'+esc(ev.eventName)+'</a>':esc(ev.eventName);
+      const sR=ev.perShowExpected>0?ev.count/ev.perShowExpected:null;
+      const rC=sR===null?'#9ca3af':sR>=1.5?'#16a34a':sR>=1.0?'#0d9488':sR>=0.5?'#d97706':'#dc2626';
+      const rD=sR===null?'—':sR.toFixed(2)+'×';
+      const rT=sR===null?'No tour average available':'This show: '+ev.count+' sales | Tour avg: '+ev.perShowExpected.toFixed(1)+' | Ratio: '+rD;
+      const ssC=(ev.showScore||0)>=15?'#16a34a':(ev.showScore||0)>=8?'#0d9488':(ev.showScore||0)>=3?'#d97706':'#dc2626';
+      h+='<tr>'
+        +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 8px">'+lnk+'</td>'
+        +'<td><span class="cell-venue">'+esc(ev.venue)+'</span></td>'
+        +'<td class="num">'+fD(ev.date)+'</td>'
+        +'<td class="num" style="color:#6b7280">'+esc(ev.time||'—')+'</td>'
+        +'<td class="num">'+ev.count+'</td>'
+        +'<td class="num">'+fM(ev.total)+'</td>'
+        +'<td class="num">'+fM(ev.cost)+'</td>'
+        +'<td class="num" style="font-weight:600">'+fM(ev.profit)+'</td>'
+        +'<td class="num">'+fP(ev.profitPct)+'</td>'
+        +'<td class="num">'+privFmt(ev.pctPrivate)+'</td>'
+        +'<td class="num" style="color:'+rC+';font-weight:600" title="'+rT+'">'+rD+'</td>'
+        +'<td class="num" style="color:'+ssC+';font-weight:600" title="Show Score: velocity + sales vs tour avg.">'+(ev.showScore||0).toFixed(1)+'</td>'
+        +'<td>'+uL(ev.eventUrl,ev.tdUrl)+'</td>'
+        +'<td>'+aB(ev.eventId,ev.eventName)+'</td></tr>';
+    });
+    h+='</tbody></table></div></td></tr>';
+  });
+  return h+'</tbody></table>';
+}
+function bGroupedProp(rows,byVenue){
+  if(!rows.length)return'<div class="placeholder">No events match current filters</div>';
+  const gm={};
+  rows.forEach(r=>{const k=byVenue?r.venue.toLowerCase().trim():nN(r.eventName);if(!gm[k])gm[k]={label:byVenue?r.venue:r.eventName,rows:[]};gm[k].rows.push(r)});
+  let h='<table>'+TH.apply(null,_grpCols)+'<tbody>';
+  Object.values(gm).forEach(g=>{
+    h+='<tr class="grp-hdr"><td colspan="'+_grpCols.length+'"><strong>'+esc(g.label)+'</strong> <span style="color:#9ca3af;font-weight:400;font-size:11px">| '+g.rows.length+' events</span></td></tr>';
+    g.rows.forEach(r=>{h+=_evRow(r,_grpCols.length)});
+  });
+  return h+'</tbody></table>'
+}
+
+function bNS(rows){if(!rows.length)return'<div class="placeholder">No NS positions match filters</div>';return'<table>'+TH('Tier','Event','Venue','Date','Days','Tickets','$ Cost','Daily Rate','Proj.Clear','At Risk','$ at Risk','Broadcast','Action','Links','Actions')+'<tbody>'+rows.map(r=>'<tr><td>'+uTag(r.urgencyTier)+'</td><td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis">'+esc(r.event||r.eventName)+'</td><td><span class="cell-venue">'+esc(r.venue)+'</span></td><td class="num">'+fD(r.date)+'</td><td class="num">'+(r.daysTil!==null?r.daysTil+'d':'—')+'</td><td class="num">'+r.totalQty+'</td><td class="num">'+fM(r.totalCost)+'</td><td class="num">'+r.dailyRate+'/day</td><td class="num">'+r.projectedCleared+'</td><td class="num '+(r.ticketsAtRisk>0?'c-down':'c-up')+'">'+r.ticketsAtRisk+'</td><td class="num '+(r.dollarAtRisk>0?'c-down':'c-up')+'">'+fM(r.dollarAtRisk)+'</td><td>'+tag(r.broadcastStatus==='Broadcasting'?'blue':r.broadcastStatus==='SM Hold'?'teal':'red',r.broadcastStatus)+'</td><td style="font-size:11px;color:#6b7280">'+esc(r.recommendedAction)+'</td><td>'+uL(r.eventUrl,r.tdUrl)+'</td><td>'+aB(r.eventId||r.event,r.event||r.eventName)+'</td></tr>').join('')+'</tbody></table>'}
+
+function bBuy(rows){
+  if(!rows.length)return'<div class="placeholder">No buy signals match current filters</div>';
+  const sorted=[...rows].sort((a,b)=>{
+    const v=r=>r[BUY_SORT.col]!=null?r[BUY_SORT.col]:0;
+    // tie-break signalCount by buyScore
+    if(BUY_SORT.col==='signalCount'){const d=(b.signalCount||0)-(a.signalCount||0);return d!==0?d:b.buyScore-a.buyScore;}
+    return BUY_SORT.dir==='desc'?v(b)-v(a):v(a)-v(b);
+  });
+  const sortTh=(col,label,title)=>{
+    const active=BUY_SORT.col===col;
+    const arrow=active?(BUY_SORT.dir==='desc'?' ▼':' ▲'):'';
+    return'<th style="cursor:pointer;user-select:none;white-space:nowrap;'+(active?'color:#7c3aed;font-weight:700;':'')+'" title="'+(title||'')+'" onclick="sortBuy(\''+col+'\')">'+label+arrow+'</th>';
+  };
+  // Factor chip — lit = colored, unlit = grey dot
+  const fc=(label,active,bg,tc)=>active
+    ?'<span style="display:inline-flex;align-items:center;background:'+bg+';color:'+tc+';border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700;margin:0 1px;white-space:nowrap">'+label+'</span>'
+    :'<span style="display:inline-flex;align-items:center;background:#f3f4f6;color:#d1d5db;border-radius:3px;padding:1px 5px;font-size:10px;font-weight:600;margin:0 1px;white-space:nowrap">'+label+'</span>';
+  let h='<table><thead><tr>'
+    +sortTh('signalCount','Signals','Number of independent buy factors firing — sort to see strongest cases first')
+    +'<th style="color:#6b7280;font-size:10.5px;font-weight:500;white-space:nowrap" title="Which of the 5 factors are active for this row">Priv · Clust · Early · 3D · Sales</th>'
+    +'<th>Event</th>'
+    +'<th>Venue</th>'
+    +sortTh('daysTil','Days','Days until event — red ≤14, amber 15–45, green 46–90')
+    +sortTh('buyScore','Score','Composite score — clusters, velocity, private %, artist demand')
+    +'<th>3D / 7D / Trend</th>'
+    +sortTh('pctPrivate','% Private','Primary market tightening')
+    +sortTh('earlyClusters','Clusters','Early season buyer clusters')
+    +sortTh('count','Event Sales','All-time sales for this specific event')
+    +sortTh('profit','Event Profit','Profit on this event')
+    +'<th>Profit %</th>'
+    +sortTh('totalArtistSales','Artist Sales','All-time artist sales across all events')
+    +'<th>Artist Profit</th>'
+    +'<th>NS?</th>'
+    +'<th>Links</th>'
+    +'<th>Actions</th>'
+    +'</tr></thead><tbody>';
+  sorted.forEach(r=>{
+    const sc=r.signalCount||0;
+    // Row highlight based on factor count
+    const rowBg=sc>=4?'background:#faf5ff':sc===3?'background:#f0fdf4':'';
+    const rowStyle=rowBg?'style="'+rowBg+'"':'';
+    // Signal count badge
+    const cntBadge=sc>=4?ch(sc+'/5','#ede9fe','#6d28d9'):sc===3?ch(sc+'/5','#dcfce7','#15803d'):sc===2?'<span style="font-weight:700;color:#d97706;font-size:12px">'+sc+'/5</span>':'<span style="color:#9ca3af;font-size:11px">'+sc+'/5</span>';
+    // Factor chips
+    const factors=fc('Priv',r.fPriv,'#ede9fe','#6d28d9')+fc('Clust',r.fClust,'#eff6ff','#2563eb')+fc('Early',r.fEarly,'#f0fdf4','#15803d')+fc('3D',r.fAccel,'#fef9c3','#a16207')+fc('Sales',r.fSales,'#faf5ff','#7c3aed');
+    // Days
+    const daysColor=r.daysTil<=14?'#dc2626':r.daysTil<=45?'#d97706':r.daysTil<=90?'#16a34a':'#374151';
+    // Velocity
+    const r3=r.v3||0,r7=r.v7||0;
+    const trendArrow=r.isAccelerating?'▲':(r3/3<r7/7*0.8?'▼':'→');
+    const trendColor=r.isAccelerating?'#16a34a':(trendArrow==='▼'?'#dc2626':'#9ca3af');
+    // Private
+    const privColor=r.pctPrivate>=1.0?'#dc2626':r.pctPrivate>=0.5?'#d97706':'#374151';
+    // Event columns
+    const evSalesDisp=r.count>=50?ch(r.count,'#fef9c3','#92400e'):r.count>=10?'<span style="font-weight:700;color:#d97706">'+r.count+'</span>':'<span style="color:#374151">'+r.count+'</span>';
+    const evProfitDisp=(r.profit||0)>=1000?ch(fM(r.profit),'#dcfce7','#15803d'):(r.profit||0)>=300?'<span style="font-weight:600;color:#16a34a">'+fM(r.profit)+'</span>':'<span style="color:#374151">'+fM(r.profit)+'</span>';
+    // Artist columns
+    const artSales=r.totalArtistSales||0;
+    const artSalesDisp=artSales>=500?ch(artSales,'#faf5ff','#7c3aed'):artSales>=100?'<span style="font-weight:700;color:#7c3aed">'+artSales+'</span>':'<span style="color:#6b7280">'+artSales+'</span>';
+    const artProfit=(S._histProfitByArtist&&S._histProfitByArtist[nN(r.eventName)])||0;
+    const artProfitDisp=artProfit>=5000?ch(fM(artProfit),'#faf5ff','#7c3aed'):artProfit>=1000?'<span style="font-weight:600;color:#7c3aed">'+fM(artProfit)+'</span>':'<span style="color:#9ca3af">'+fM(artProfit)+'</span>';
+    h+='<tr '+rowStyle+'>'
+      +'<td class="num" style="font-weight:700">'+cntBadge+'</td>'
+      +'<td style="white-space:nowrap">'+factors+'</td>'
+      +'<td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</td>'
+      +'<td><span class="cell-venue">'+esc(r.venue)+'</span></td>'
+      +'<td class="num" style="color:'+daysColor+';font-weight:'+(r.daysTil<=45?600:400)+'">'+r.daysTil+'</td>'
+      +'<td class="num" style="font-weight:700;color:'+((r.buyScore||0)>=100?'#16a34a':(r.buyScore||0)>=50?'#d97706':'#9ca3af')+'">'+( r.buyScore||0)+'</td>'
+      +'<td style="font-size:11.5px;color:'+trendColor+';font-weight:500;white-space:nowrap">'+r3+' / '+r7+' '+trendArrow+'</td>'
+      +'<td class="num" style="color:'+privColor+';font-weight:'+(r.pctPrivate>=0.5?600:400)+'">'+r.pctPrivateFmt+'</td>'
+      +'<td class="num" style="color:#2563eb;font-weight:'+(r.earlyClusters>=4?700:400)+'">'+( r.earlyClusters||0)+'</td>'
+      +'<td class="num">'+evSalesDisp+'</td>'
+      +'<td class="num">'+evProfitDisp+'</td>'
+      +'<td class="num" style="color:#6b7280;font-size:11px">'+fP(r.profitPct)+'</td>'
+      +'<td class="num">'+artSalesDisp+'</td>'
+      +'<td class="num">'+artProfitDisp+'</td>'
+      +(r.hasNS?'<td style="color:#16a34a;font-size:11px;font-weight:500">Yes ✓</td>':'<td style="color:#9ca3af;font-size:11px">—</td>')
+      +'<td>'+uL(r.eventUrl,r.tdUrl)+'</td>'
+      +'<td>'+aB(r.eventId,r.eventName)+'</td>'
+      +'</tr>';
+  });
+  return h+'</tbody></table>';
+}
+
+function bUp1(rows){
+  if(!rows.length)return'<div class="placeholder">No underperforming events</div>';
+  if(!S.up1Col)S.up1Col='gap';if(!S.up1Dir||S.up1Dir===0)S.up1Dir=-1;
+  const COLS={
+    event: {fn:(a,b)=>a.eventName.localeCompare(b.eventName),str:true},
+    venue: {fn:(a,b)=>a.venue.localeCompare(b.venue),str:true},
+    date:  {fn:(a,b)=>new Date(a.date)-new Date(b.date)},
+    time:  {fn:(a,b)=>(a.time||'').localeCompare(b.time||''),str:true},
+    gap:   {fn:(a,b)=>b.rawGap-a.rawGap},
+    pct:   {fn:(a,b)=>b.pctGap-a.pctGap},
+    sales: {fn:(a,b)=>b.count-a.count},
+    avg:   {fn:(a,b)=>b.perShowExpected-a.perShowExpected},
+    priv:  {fn:(a,b)=>b.pctPrivate-a.pctPrivate},
+    profit:{fn:(a,b)=>b.profit-a.profit},
+    pct2:  {fn:(a,b)=>b.profitPct-a.profitPct}
+  };
+  const col=S.up1Col,dir=S.up1Dir;
+  const def=COLS[col]||COLS.gap;
+  rows=[...rows].sort((a,b)=>def.str?dir*def.fn(a,b):dir<0?def.fn(a,b):-def.fn(a,b));
+  const uH=(label,key,tip)=>{const active=col===key;const arrow=active?(dir<0?' ↓':' ↑'):'';const tt=tip?' title="'+tip+'"':'';return'<th style="cursor:pointer;user-select:none;'+(active?'color:#111827;font-weight:700':'color:#6b7280')+'"'+tt+' onclick="upSort(\'up1\',\''+key+'\')">'+label+arrow+'</th>';};
+  const thead='<thead><tr>'+uH('Event','event')+uH('Venue','venue')+uH('Date','date')+uH('Time','time')+uH('Gap','gap','Raw sales gap vs artist baseline')+uH('vs Avg','pct','% underperforming vs expected')+uH('# Sales','sales')+uH('Avg/Show','avg','Artist average sales per show')+uH('% Private','priv')+uH('Profit $','profit')+uH('%','pct2','Profit %')+'<th>Links</th><th>Actions</th></tr></thead>';
+  let h='<table>'+thead+'<tbody>';
+  rows.forEach(r=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    const gapDisp=r.rawGap>=500?ch(r.rawGap,'#fecaca','#991b1b'):r.rawGap>=100?ch(r.rawGap,'#fed7aa','#9a3412'):r.rawGap>=30?ch(r.rawGap,'#fde68a','#92400e'):'<span style="font-weight:700;color:#dc2626">'+r.rawGap+'</span>';
+    const pctColor=r.pctGap>=90?'#b91c1c':r.pctGap>=70?'#c2410c':'#92400e';
+    const vsAvg='<span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><span style="font-size:11px;color:#6b7280">'+r.count+' of ~'+Math.round(r.perShowExpected)+'</span><span style="font-size:10.5px;font-weight:700;color:'+pctColor+'">'+r.pctGap+'%</span></span>';
+    const profDisp=r.profit>=1000?ch(fM(r.profit),'#dcfce7','#15803d'):r.profit>=300?ch(fM(r.profit),'#f0fdf4','#166534'):'<span style="font-weight:600;color:'+(r.profit>0?'#374151':'#9ca3af')+'">'+fM(r.profit)+'</span>';
+    const links=(r.eventUrl?'<a href="'+esc(r.eventUrl)+'" target="_blank" class="url-btn">Primary ↗</a> ':'')+( r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="url-btn">TD ↗</a>':'');
+    h+='<tr>'
+      +'<td>'+evLink+'</td>'
+      +'<td><span class="cell-venue">'+esc(r.venue)+'</span></td>'
+      +'<td class="num">'+fD(r.date)+'</td>'
+      +'<td class="num" style="color:#6b7280">'+(r.time?esc(r.time.replace(/:00(\s)/,'$1')):'—')+'</td>'
+      +'<td class="num">'+gapDisp+'</td>'
+      +'<td>'+vsAvg+'</td>'
+      +'<td class="num" style="color:#6b7280">'+r.count+'</td>'
+      +'<td class="num" style="color:#9ca3af">'+Math.round(r.perShowExpected)+'</td>'
+      +'<td class="num">'+privFmt(r.pctPrivate)+'</td>'
+      +'<td class="num">'+profDisp+'</td>'
+      +'<td class="num" style="color:#6b7280">'+fP(r.profitPct)+'</td>'
+      +'<td style="white-space:nowrap">'+links+'</td>'
+      +'<td>'+aB(r.eventId,r.eventName)+'</td>'
+      +'</tr>';
+  });
+  return h+'</tbody></table>';
+}
+function bUp0(rows){
+  if(!rows.length)return'<div class="placeholder">No zero-sale events</div>';
+  if(!S.up0Col)S.up0Col='avg';if(!S.up0Dir||S.up0Dir===0)S.up0Dir=-1;
+  const COLS={
+    event:{fn:(a,b)=>a.eventName.localeCompare(b.eventName),str:true},
+    venue:{fn:(a,b)=>a.venue.localeCompare(b.venue),str:true},
+    date: {fn:(a,b)=>new Date(a.date)-new Date(b.date)},
+    time: {fn:(a,b)=>(a.time||'').localeCompare(b.time||''),str:true},
+    avg:  {fn:(a,b)=>b.perShowExpected-a.perShowExpected},
+    priv: {fn:(a,b)=>b.pctPrivate-a.pctPrivate}
+  };
+  const col=S.up0Col,dir=S.up0Dir;
+  const def=COLS[col]||COLS.avg;
+  rows=[...rows].sort((a,b)=>def.str?dir*def.fn(a,b):dir<0?def.fn(a,b):-def.fn(a,b));
+  const uH=(label,key,tip)=>{const active=col===key;const arrow=active?(dir<0?' ↓':' ↑'):'';const tt=tip?' title="'+tip+'"':'';return'<th style="cursor:pointer;user-select:none;'+(active?'color:#111827;font-weight:700':'color:#6b7280')+'"'+tt+' onclick="upSort(\'up0\',\''+key+'\')">'+label+arrow+'</th>';};
+  const thead='<thead><tr>'+uH('Event','event')+uH('Venue','venue')+uH('Date','date')+uH('Time','time')+uH('Avg/Show','avg','Artist average sales per show')+uH('% Private','priv')+'<th># Sales</th><th>Links</th><th>Actions</th></tr></thead>';
+  let h='<table>'+thead+'<tbody>';
+  rows.forEach(r=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    const avgDisp=r.perShowExpected>=100?ch(Math.round(r.perShowExpected),'#fde68a','#92400e'):r.perShowExpected>=30?ch(Math.round(r.perShowExpected),'#fefce8','#a16207'):'<span style="font-weight:700;color:#d97706">'+Math.round(r.perShowExpected)+'</span>';
+    const links=(r.eventUrl?'<a href="'+esc(r.eventUrl)+'" target="_blank" class="url-btn">Primary ↗</a> ':'')+( r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="url-btn">TD ↗</a>':'');
+    h+='<tr>'
+      +'<td>'+evLink+'</td>'
+      +'<td><span class="cell-venue">'+esc(r.venue)+'</span></td>'
+      +'<td class="num">'+fD(r.date)+'</td>'
+      +'<td class="num" style="color:#6b7280">'+(r.time?esc(r.time.replace(/:00(\s)/,'$1')):'—')+'</td>'
+      +'<td class="num">'+avgDisp+'</td>'
+      +'<td class="num" style="color:#9ca3af">0</td>'
+      +'<td class="num">'+privFmt(r.pctPrivate)+'</td>'
+      +'<td style="white-space:nowrap">'+links+'</td>'
+      +'<td>'+aB(r.eventId,r.eventName)+'</td>'
+      +'</tr>';
+  });
+  return h+'</tbody></table>';
+}
+function bVelDiv(rows){
+  if(!rows.length)return'<div class="placeholder">No velocity divergence detected</div>';
+  if(!S.velCol)S.velCol='est';
+  if(!S.velDir||S.velDir===0)S.velDir=-1;
+  // Column sort definitions
+  const VCOLS={
+    est:     {fn:(a,b)=>b.recoverableProfit-a.recoverableProfit},
+    priority:{fn:(a,b)=>b.priorityScore-a.priorityScore},
+    event:   {fn:(a,b)=>a.eventName.localeCompare(b.eventName),str:true},
+    venue:   {fn:(a,b)=>a.venue.localeCompare(b.venue),str:true},
+    date:    {fn:(a,b)=>new Date(a.date)-new Date(b.date)},
+    daysUntil:{fn:(a,b)=>a.daysTil-b.daysTil},
+    daysStale:{fn:(a,b)=>(b.lastSaleDays||0)-(a.lastSaleDays||0)},
+    v3:      {fn:(a,b)=>b.v3-a.v3},
+    v7:      {fn:(a,b)=>b.v7-a.v7},
+    v14:     {fn:(a,b)=>b.v14-a.v14},
+    v30:     {fn:(a,b)=>b.v30-a.v30},
+    sales:   {fn:(a,b)=>b.count-a.count},
+    artist:  {fn:(a,b)=>b.artistSalesDisp-a.artistSalesDisp},
+    profit:  {fn:(a,b)=>b.profit-a.profit},
+    priv:    {fn:(a,b)=>b.pctPrivate-a.pctPrivate}
+  };
+  const col=S.velCol;const dir=S.velDir;
+  const baseFn=VCOLS[col]?VCOLS[col].fn:VCOLS.est.fn;
+  const isStr=VCOLS[col]&&VCOLS[col].str;
+  const sorted=[...rows].sort((a,b)=>isStr?dir*baseFn(a,b):dir<0?baseFn(a,b):-baseFn(a,b));
+  // Column header helper — shows active sort indicator
+  const vH=(label,key,tip)=>{
+    const active=col===key;
+    const arrow=active?(dir<0?' ↓':' ↑'):'';
+    const ttip=tip?' title="'+tip+'"':'';
+    return '<th style="cursor:pointer;user-select:none;'+(active?'color:#111827;font-weight:700':'color:#6b7280')+'"'
+      +ttip+' onclick="velDivSort(\''+key+'\')">'+label+arrow+'</th>';
+  };
+  // Background-shade helpers — black text on subtle tint, no colored fonts
+  const rpBg=v=>v>500?'background:#dcfce7':v>100?'background:#fef9c3':'';
+  const staleBg=d=>d===null?'':d>60?'background:#fee2e2':d>30?'background:#fff7ed':'';
+  const daysBg=d=>d<=14?'background:#fee2e2':d<=30?'background:#fff7ed':'';
+  const vBg=v=>v>0?'':'background:#fee2e2';
+  const btnBase='cursor:pointer;border:1px solid #d1d5db;border-radius:5px;padding:3px 11px;font-size:12px;font-weight:600;';
+  const btnA=btnBase+(col==='est'?'background:#111827;color:#fff;border-color:#111827':'background:#fff;color:#6b7280');
+  const btnB=btnBase+(col==='priority'?'background:#111827;color:#fff;border-color:#111827':'background:#fff;color:#6b7280');
+  const sortBar='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+    +'<span style="font-size:12px;color:#6b7280;font-weight:500">Sort by</span>'
+    +'<button style="'+btnA+'" onclick="velDivSort(\'est\')">Est. $ Adjusted</button>'
+    +'<button style="'+btnB+'" onclick="velDivSort(\'priority\')" title="Sort by velocity drop % — highest stall first">Vel. Down %</button>'
+    +'</div>';
+  const thead='<thead><tr>'
+    +vH('Est. $ Adjusted','est','Estimated recoverable profit if velocity returns to expected')
+    +vH('Vel. Down','priority','% drop in 7-day sales vs expected baseline — 100% = completely stalled')
+    +vH('Event','event')
+    +vH('Venue','venue')
+    +vH('Date','date')
+    +vH('Days Until','daysUntil','Days remaining before the event')
+    +vH('Days Stale','daysStale','Days since last sale — higher = more urgent')
+    +vH('3D','v3','Sales in last 3 days')
+    +vH('7D','v7','Sales in last 7 days')
+    +vH('14D','v14','Sales in last 14 days')
+    +vH('30D','v30','Sales in last 30 days')
+    +vH('# Sales','sales','All-time sales for this event')
+    +vH('Artist Sales','artist','All-time artist sales across all events')
+    +vH('Profit $','profit','Current profit on this event')
+    +vH('% Private','priv','Broadcast / private listing status')
+    +'<th>Links</th><th>Actions</th>'
+    +'</tr></thead>';
+  let h=sortBar+'<table>'+thead+'<tbody>';
+  rows.forEach(r=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    const staleDisp=r.lastSaleDays!==null?r.lastSaleDays:'—';
+    const artistSales=Math.round((r.perShowExpected||0)*(r.activeDates||1));
+    const profitPerSale=r.count>0?Math.round(r.profit/r.count):0;
+    const expRate=Math.round((r.perShowExpected/90)*1000)/1000;
+    const actRate=Math.round(((r.v30||0)/30)*1000)/1000;
+    const div=Math.round((expRate-actRate)*1000)/1000;
+    const estTip='How we calculated '+fM(r.recoverableProfit)+':'
+      +' Artist typically sells '+r.perShowExpected.toFixed(1)+' tickets/show,'
+      +' which works out to '+expRate+' sales per day.'
+      +' In the last 30 days this listing only sold '+actRate+' per day.'
+      +' That gap is '+div+' sales/day.'
+      +' Each sale earns about '+fM(profitPerSale)+'.'
+      +' Multiply: '+div+' gap × '+fM(profitPerSale)+' profit × '+r.runway+' days left = '+fM(r.recoverableProfit)+'.';
+    const vd=r.priorityScore||0;
+    const vdBg=vd>=90?'background:#fee2e2':vd>=60?'background:#fff7ed':'';
+    const vdDisp=vd+'%';
+    h+='<tr>'
+      +'<td class="num" style="font-weight:700;'+rpBg(r.recoverableProfit)+'" title="'+esc(estTip)+'">'+fM(r.recoverableProfit)+'</td>'
+      +'<td class="num" style="font-weight:600;'+vdBg+'" title="7D sales vs expected baseline">↓ '+vdDisp+'</td>'
+      +'<td>'+evLink+'</td>'
+      +'<td><span class="cell-venue">'+esc(r.venue)+'</span></td>'
+      +'<td class="num">'+fD(r.date)+'</td>'
+      +'<td class="num" style="'+daysBg(r.daysTil)+'">'+r.daysTil+'</td>'
+      +'<td class="num" style="'+staleBg(r.lastSaleDays)+'">'+staleDisp+'</td>'
+      +'<td class="num" style="'+vBg(r.v3||0)+'">'+(r.v3||0)+'</td>'
+      +'<td class="num" style="'+vBg(r.v7||0)+'">'+(r.v7||0)+'</td>'
+      +'<td class="num" style="'+vBg(r.v14||0)+'">'+(r.v14||0)+'</td>'
+      +'<td class="num" style="'+vBg(r.v30||0)+'">'+(r.v30||0)+'</td>'
+      +'<td class="num">'+r.count+'</td>'
+      +'<td class="num" style="color:#6b7280">'+artistSales+'</td>'
+      +'<td class="num">'+fM(r.profit)+'</td>'
+      +'<td class="num">'+privFmt(r.pctPrivate)+'</td>'
+      +'<td>'+uL(r.eventUrl,r.tdUrl)+'</td>'
+      +'<td>'+aB(r.eventId,r.eventName)+'</td>'
+      +'</tr>';
+  });
+  return h+'</tbody></table>';
+}
+function bStNo(rows){
+  if(!rows.length)return'<div class="placeholder">No stale events detected</div>';
+  const maxScore=rows[0]?.staleScore||1;
+  const scoreDisp=s=>{const n=Math.round(s/maxScore*100);return n>=80?ch(n,'#fee2e2','#b91c1c'):n>=50?ch(n,'#fff7ed','#c2410c'):n>=25?'<span style="font-weight:700;color:#d97706;vertical-align:middle">'+n+'</span>':'<span style="color:#9ca3af;vertical-align:middle">'+n+'</span>';};
+  const staleDisp=d=>d>=14?ch(d,'#fee2e2','#b91c1c'):d>=7?ch(d,'#fff7ed','#c2410c'):'<span style="font-weight:600;color:#d97706;vertical-align:middle">'+d+'</span>';
+  const daysToDisp=d=>{if(d===null||d===undefined)return'<span style="color:#9ca3af">—</span>';return d<=7?ch(d,'#fee2e2','#b91c1c'):d<=14?ch(d,'#fff7ed','#c2410c'):'<span style="color:#6b7280;vertical-align:middle">'+d+'</span>';};
+  let h='<table>'+TH('#','Score','Event','Venue','Date','Time','Days Stale','Days To','Profit $','Est. Gain','% Private','Links','Actions')+'<tbody>';
+  rows.forEach((r,i)=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    const profDisp=r.profit>=1000?ch(fM(r.profit),'#dcfce7','#15803d'):r.profit>=300?ch(fM(r.profit),'#f0fdf4','#166534'):'<span style="font-weight:600;color:'+(r.profit>0?'#374151':'#9ca3af')+'">'+fM(r.profit)+'</span>';
+    const recovDisp=(r.recov||0)>=500?ch(fM(r.recov),'#fde68a','#92400e'):(r.recov||0)>=100?ch(fM(r.recov),'#fefce8','#a16207'):(r.recov||0)>0?'<span style="color:#9ca3af;font-size:10.5px">'+fM(r.recov)+'</span>':'<span style="color:#e5e7eb">—</span>';
+    const links=(r.eventUrl?'<a href="'+esc(r.eventUrl)+'" target="_blank" class="url-btn">Primary ↗</a> ':'')+( r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="url-btn">TD ↗</a>':'');
+    h+='<tr>';
+    h+='<td class="num" style="color:#9ca3af;font-size:10.5px">#'+(i+1)+'</td>';
+    h+='<td class="num">'+scoreDisp(r.staleScore)+'</td>';
+    h+='<td>'+evLink+'</td>';
+    h+='<td><span class="cell-venue">'+esc(r.venue)+'</span></td>';
+    h+='<td class="num">'+fD(r.date)+'</td>';
+    h+='<td class="num" style="color:#6b7280">'+(r.time?esc(r.time.replace(/:00(\s)/,'$1')):'—')+'</td>';
+    h+='<td class="num">'+staleDisp(r.lastSaleDays||0)+'</td>';
+    h+='<td class="num">'+daysToDisp(r.daysTil)+'</td>';
+    h+='<td class="num">'+profDisp+'</td>';
+    h+='<td class="num" title="Est. recoverable profit if repriced: avg $/ticket × expected gap × artist history confidence">'+recovDisp+'</td>';
+    h+='<td class="num">'+privFmt(r.pctPrivate)+'</td>';
+    h+='<td style="white-space:nowrap">'+links+'</td>';
+    h+='<td>'+aB(r.eventId,r.eventName)+'</td>';
+    h+='</tr>';
+  });
+  return h+'</tbody></table>'
+}
+function bStCo(rows){
+  if(!rows.length)return'<div class="placeholder">No demand collapse detected</div>';
+  const maxScore=rows[0]?.staleScore||1;
+  const scoreDisp=s=>{const n=Math.round(s/maxScore*100);return n>=80?ch(n,'#fee2e2','#b91c1c'):n>=50?ch(n,'#fff7ed','#c2410c'):n>=25?'<span style="font-weight:700;color:#d97706;vertical-align:middle">'+n+'</span>':'<span style="color:#9ca3af;vertical-align:middle">'+n+'</span>';};
+  const dropDisp=p=>p>=100?ch('100%','#fee2e2','#b91c1c'):p>=80?ch(p+'%','#fee2e2','#b91c1c'):p>=50?ch(p+'%','#fff7ed','#c2410c'):'<span style="font-weight:700;color:#d97706;vertical-align:middle">'+p+'%</span>';
+  const daysToDisp=d=>{if(d===null||d===undefined)return'<span style="color:#9ca3af">—</span>';return d<=7?ch(d,'#fee2e2','#b91c1c'):d<=14?ch(d,'#fff7ed','#c2410c'):'<span style="color:#6b7280;vertical-align:middle">'+d+'</span>';};
+  let h='<table>'+TH('#','Score','Event','Venue','Date','Time','Drop %','Days To','Profit $','Est. Gain','% Private','Links','Actions')+'<tbody>';
+  rows.forEach((r,i)=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    const profDisp=r.profit>=1000?ch(fM(r.profit),'#dcfce7','#15803d'):r.profit>=300?ch(fM(r.profit),'#f0fdf4','#166534'):'<span style="font-weight:600;color:'+(r.profit>0?'#374151':'#9ca3af')+'">'+fM(r.profit)+'</span>';
+    const recovDisp=(r.recov||0)>=500?ch(fM(r.recov),'#fde68a','#92400e'):(r.recov||0)>=100?ch(fM(r.recov),'#fefce8','#a16207'):(r.recov||0)>0?'<span style="color:#9ca3af;font-size:10.5px">'+fM(r.recov)+'</span>':'<span style="color:#e5e7eb">—</span>';
+    const links=(r.eventUrl?'<a href="'+esc(r.eventUrl)+'" target="_blank" class="url-btn">Primary ↗</a> ':'')+( r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="url-btn">TD ↗</a>':'');
+    h+='<tr>';
+    h+='<td class="num" style="color:#9ca3af;font-size:10.5px">#'+(i+1)+'</td>';
+    h+='<td class="num">'+scoreDisp(r.staleScore)+'</td>';
+    h+='<td>'+evLink+'</td>';
+    h+='<td><span class="cell-venue">'+esc(r.venue)+'</span></td>';
+    h+='<td class="num">'+fD(r.date)+'</td>';
+    h+='<td class="num" style="color:#6b7280">'+(r.time?esc(r.time.replace(/:00(\s)/,'$1')):'—')+'</td>';
+    h+='<td class="num">'+dropDisp(r.dropPct)+'</td>';
+    h+='<td class="num">'+daysToDisp(r.daysTil)+'</td>';
+    h+='<td class="num">'+profDisp+'</td>';
+    h+='<td class="num" title="Est. recoverable profit if velocity restores: avg $/ticket × baseline rate × remaining weeks × artist confidence">'+recovDisp+'</td>';
+    h+='<td class="num">'+privFmt(r.pctPrivate)+'</td>';
+    h+='<td style="white-space:nowrap">'+links+'</td>';
+    h+='<td>'+aB(r.eventId,r.eventName)+'</td>';
+    h+='</tr>';
+  });
+  return h+'</tbody></table>'
+}
+function bP50(rows){
+  if(!rows.length)return'<div class="placeholder">No 50%+ private events</div>';
+  let h='<table>'+TH('Event','Venue','Date','Time','# Sales','Artist Sales','% Private','Profit %','Days Since Sale','Proj. Demand','Primary','Actions')+'<tbody>';
+  rows.forEach(r=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    h+='<tr><td>'+evLink+'</td><td><span class="cell-venue">'+esc(r.venue)+'</span></td><td class="num">'+fD(r.date)+'</td><td class="num" style="color:#6b7280">'+esc(r.time||'—')+'</td><td class="num">'+r.count+'</td><td class="num c-gray">'+(r.totalArtistSales||0)+'</td><td class="num">'+privFmt(r.pctPrivate)+'</td><td class="num">'+fP(r.profitPct)+'</td><td class="num">'+(r.lastSaleDays!==null?r.lastSaleDays+'d':'—')+'</td><td class="num" style="font-weight:600">'+r.demand.toFixed(1)+'</td><td>'+(r.eventUrl?'<a href="'+esc(r.eventUrl)+'" target="_blank" class="url-btn">Primary ↗</a>':'—')+'</td><td>'+aB(r.eventId,r.eventName)+'</td></tr>';
+  });
+  return h+'</tbody></table>'
+}
+function bEarly(rows){
+  if(!rows.length)return'<div class="placeholder">No early demand signals detected</div>';
+  let h='<table>'+TH('Event','Venue','Event Date','Days Til','Time','% Priv','First Sale','Days Before','Early Sales','Clusters','Triples','Total Sales','Artist Sales','Heat Score','1D','3D','7D','14D','30D','60D','90D','Sales $','Cost $','Profit $','Profit %','Proj. Demand','Status','Primary','Actions')+'<tbody>';
+  rows.forEach(r=>{
+    const evLink=r.tdUrl?'<a href="'+esc(r.tdUrl)+'" target="_blank" class="cell-event" style="color:#111827;text-decoration:none" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</a>':'<span class="cell-event" title="'+esc(r.eventName)+'">'+esc(r.eventName)+'</span>';
+    h+='<tr><td>'+evLink+'</td><td><span class="cell-venue">'+esc(r.venue)+'</span></td><td class="num">'+fD(r.date)+'</td><td class="num">'+(r.daysTil!==null?r.daysTil+'d':'—')+'</td><td class="num" style="color:#6b7280">'+esc(r.time||'—')+'</td><td class="num">'+privFmt(r.pctPrivate)+'</td><td class="num">'+(r.firstSaleDate?fD(r.firstSaleDate):'—')+'</td><td class="num">'+(r.daysBeforeEventFirstSale!==null?r.daysBeforeEventFirstSale:'—')+'</td><td class="num '+(r.earlySalesCount>0?'c-up':'')+'" style="font-weight:600">'+r.earlySalesCount+'</td><td class="num '+(r.earlyClusters>=4?'c-up':r.earlyClusters>=2?'c-warn':'')+'" style="font-weight:'+(r.earlyClusters>=2?600:400)+'">'+r.earlyClusters+'</td><td class="num '+(r.earlyTriples>=2?'c-up':'')+'" style="font-weight:'+(r.earlyTriples>=1?600:400)+'">'+r.earlyTriples+'</td><td class="num">'+r.count+'</td><td class="num c-gray">'+(r.totalArtistSales||0)+'</td><td class="num c-purple" style="font-weight:600">'+r.earlyHeatScore.toFixed(1)+'</td><td class="num '+(r.v1>0?'c-up':'')+'">'+r.v1+'</td><td class="num '+(r.v3>0?'c-up':'')+'">'+r.v3+'</td><td class="num">'+r.v7+'</td><td class="num">'+r.v14+'</td><td class="num">'+r.v30+'</td><td class="num">'+r.v60+'</td><td class="num">'+r.v90+'</td><td class="num">'+fM(r.total)+'</td><td class="num">'+fM(r.cost)+'</td><td class="num" style="font-weight:600">'+fM(r.profit)+'</td><td class="num">'+fP(r.profitPct)+'</td><td class="num" style="font-weight:600">'+r.demand.toFixed(1)+'</td><td>'+tag(r.confirmed?'green':'gray',r.confirmed?'Confirmed ✓':'Pending')+'</td><td>'+(r.eventUrl?'<a href="'+esc(r.eventUrl)+'" target="_blank" class="url-btn">Primary ↗</a>':'—')+'</td><td>'+aB(r.eventId,r.eventName)+'</td></tr>';
+  });
+  return h+'</tbody></table>'
+}
+function bTB(rows){if(!rows.length)return'<div class="placeholder">No TB issues detected</div>';return'<table>'+TH('Issue','Event','Date','Days','Total Sales','7D','Profit %','TM','StubHub','SeatGeek','GoTix','Links','Actions')+'<tbody>'+rows.map(r=>'<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">'+tag(r.failType.includes('Mapping')?'red':r.failType.includes('Stale')?'orange':'gray',r.failType)+'</td><td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis">'+esc(r.eventName)+'</td><td class="num">'+fD(r.date)+'</td><td class="num">'+(r.daysTil!==null?r.daysTil+'d':'—')+'</td><td class="num">'+r.totalSales+'</td><td class="num">'+r.v7+'</td><td class="num '+(r.profitPct<0.05?'c-down':'c-up')+'">'+fP(r.profitPct)+'</td>'+MKTS.map(m=>'<td class="num '+(r.mktCounts[m]===0?'c-down':'c-up')+'">'+r.mktCounts[m]+'</td>').join('')+'<td>'+uL(r.eventUrl,r.tdUrl)+'</td><td>'+aB(r.eventId,r.eventName)+'</td></tr>').join('')+'</tbody></table>'}
+
+function bNSD(rows){
+  if(!rows.length)return'<div class="placeholder">No NS inventory found</div>';
+  const g={};rows.forEach(r=>{const k=nN(r.event)+'__'+(r.date?r.date.toISOString().slice(0,10):'');if(!g[k])g[k]={event:r.event,date:r.date,venue:r.venue,rows:[],tQ:0,tC:0};g[k].rows.push(r);g[k].tQ+=r.qty;g[k].tC+=r.cost});
+  let h='<table>'+TH('Event','Date','Venue','Section','Row','Seat From','Seat To','Cost / Ticket','# of Tickets','$ Value')+'<tbody>';
+  Object.values(g).sort((a,b)=>(a.date||0)-(b.date||0)).forEach(gr=>{
+    h+='<tr class="grp-hdr"><td colspan="10"><strong>'+esc(gr.event)+'</strong> <span style="color:#9ca3af;font-weight:400;font-size:11px">&middot; '+fD(gr.date)+' &middot; '+gr.tQ+' tickets &middot; '+fM(gr.tC)+'</span></td></tr>';
+    gr.rows.forEach(r=>{h+='<tr><td></td><td class="num">'+fD(r.date)+'</td><td><span class="cell-venue">'+esc(r.venue)+'</span></td><td>'+esc(r.section)+'</td><td>'+esc(r.rowNum)+'</td><td class="num">'+esc(r.seatFrom||'—')+'</td><td class="num">'+esc(r.seatTo||'—')+'</td><td class="num">'+(r.qty>0?fM(r.cost/r.qty):'—')+'</td><td class="num">'+r.qty+'</td><td class="num">'+fM(r.cost)+'</td></tr>'});
+  });
+  return h+'</tbody></table>'
+}
+
+function bLog(){
+  if(!S.log.length)return'<div class="placeholder">No actions recorded yet</div>';
+  const ts={hide:{bg:'#fef2f2',c:'#dc2626'},buy:{bg:'#f0fdf4',c:'#16a34a'},escalate:{bg:'#faf5ff',c:'#7c3aed'},sm:{bg:'#f0fdfa',c:'#0d9488'},note:{bg:'#eff6ff',c:'#2563eb'},price:{bg:'#fff7ed',c:'#d97706'}};
+  return S.log.map(e=>{const s=ts[e.type]||{bg:'#f9fafb',c:'#6b7280'};return'<div class="log-item"><span class="log-type" style="background:'+s.bg+';color:'+s.c+'">'+e.type.toUpperCase()+'</span><div style="flex:1"><div class="log-event">'+esc(e.eventName)+'</div>'+(e.note?'<div class="log-detail">Note: '+esc(e.note)+'</div>':'')+(e.price?'<div class="log-detail">Price: '+esc(e.price)+'</div>':'')+'</div><span class="log-time">'+new Date(e.ts).toLocaleString()+'</span></div>'}).join('')
+}
+
+// Tab titles mapping
+const TTS={summary:'Summary',review:'Team Review',ns_summary:'NS - Summary',main:'Main',grouped:'Grouped Events (5+)',top250:'Top 300 (All)',top300tb:'Top 300 Inc TB',top300profit:'Top 300 Profit Inc TB',top250ptb:'Top 250 Profitable (TB)',top250pnontb:'Top 250 Profitable (Non-TB)',ns_urg:'NS - Urgency',buy:'Buy Signal',up1:'Underperform 1+ Sales',up0:'Underperform 0 Sales',velDiv:'Velocity Divergence',p50:'50%+ Private',early:'Early Demand',tb:'TB Monitor',funnybone:'Funny Bone',vegas:'Vegas',opry:'Opry',disney:'Disney on Ice',harlem:'Harlem Globetrotters',stb:'Seattle Thunderbirds',dwarfanator:'Extreme Dwarfanator Wrestling',shenyun:'Shen Yun',phantom:'Phantom of the Opera',lionking:'Lion King',ns_nonpark:'NS - Non-Parking',ns_park:'NS - Parking',log:'Action Log'};
+
+const NO_FILTER=['summary','review','ns_summary','ns_nonpark','ns_park','log'];
+
+function sT(id){
+  S.tab=id;
+  document.querySelectorAll('.sb-item[id]').forEach(el=>el.classList.toggle('active',el.id==='sb-'+id));
+  ['main','ns_urg','buy','tb'].forEach(t=>{const el=document.getElementById('tl-'+t);if(el)el.classList.toggle('active',t===id)});
+  document.getElementById('content-title').textContent=TTS[id]||id;
+  document.getElementById('filterbar').style.display=NO_FILTER.includes(id)?'none':'flex';
+  document.getElementById('urgency-filter').style.display=id==='ns_urg'?'block':'none';
+  document.getElementById('search-box').value='';
+  document.getElementById('date-filter').value='all';
+  document.getElementById('urgency-filter').value='all';
+  updM(id);applyF()
+}
+
+function sortGrp(col){if(GRP_SORT.col===col){GRP_SORT.dir=GRP_SORT.dir==='desc'?'asc':'desc';}else{GRP_SORT.col=col;GRP_SORT.dir='desc';}applyF();}
+function sortBuy(col){if(BUY_SORT.col===col){BUY_SORT.dir=BUY_SORT.dir==='desc'?'asc':'desc';}else{BUY_SORT.col=col;BUY_SORT.dir=col==='daysTil'?'asc':'desc';}applyF();}
+function toggleSB(){const sb=document.getElementById('sidebar');sb.classList.toggle('sb-collapsed');localStorage.setItem('sbCol',sb.classList.contains('sb-collapsed')?'1':'0')}
+function velDivSort(key){if(S.velCol===key){S.velDir=-S.velDir;}else{S.velCol=key;S.velDir=-1;}applyF();}
+function upSort(view,key){const ck=view+'Col',dk=view+'Dir';if(S[ck]===key){S[dk]=-S[dk];}else{S[ck]=key;S[dk]=-1;}applyF();}
+function applyF(){
+  if(!S.data)return;
+  const q=(document.getElementById('search-box').value||'').toLowerCase();
+  const df=document.getElementById('date-filter').value;
+  const uf=document.getElementById('urgency-filter').value;
+  const exFB=document.getElementById('fb-filter').checked;
+  const showTB=document.getElementById('tb-filter').checked;
+  const showDS=document.getElementById('ds-filter').checked;
+  const d=S.data,tab=S.tab;
+  document.getElementById('fb-filter-wrap').style.display=(tab==='grouped')?'flex':'none';
+  document.getElementById('type-filter-wrap').style.display=(tab==='top250')?'flex':'none';
+  document.getElementById('buy-filter-wrap').style.display=(tab==='buy')?'flex':'none';
+  const isFB=e=>(e.venue||'').toLowerCase().includes('funny bone');
+  const flt=(rows,nk)=>rows.filter(r=>{
+    const nm=(r[nk||'eventName']||r.event||r.eventName||'').toLowerCase();
+    if(q&&!nm.includes(q))return false;
+    if(df!=='all'){const dt=r.daysTil!=null?r.daysTil:dU(r.date);if(dt===null||dt<0||dt>parseInt(df))return false}
+    if(uf!=='all'&&r.urgencyTier&&r.urgencyTier!==uf)return false;
+    if(exFB&&tab==='grouped'){// for grouped rows, check if ALL events in the group are Funny Bone
+      const evs=r.events||[];if(evs.length>0&&evs.every(e=>isFB(e)))return false}
+    return true
+  });
+  const showHid=document.getElementById('show-hidden')?.checked;
+  const vis=r=>showHid||!S.hidden[r.eventId||r.event||''];
+  let html='',count=0;
+  const sf=(src,nk)=>{const rows=flt(src,nk).filter(vis);count=rows.length;return rows};
+
+  if(tab==='summary'){html=bSum(d);count=d.mainR.length}
+  else if(tab==='review'){const hlRows=d.mainR.filter(r=>S.highlighted[r.eventId]);count=hlRows.length;html=bReview(hlRows)}
+  else if(tab==='ns_summary'){html=bNSSum(d);count=d.nsNP.length+d.nsPK.length}
+  else if(tab==='main'){html=bMain(sf(d.mainR))}
+  else if(tab==='top250'){const allEvents=[...d.mainR,...(d.tbMR||[])].filter(r=>r.isTB?showTB:showDS);const rows=flt(allEvents).filter(vis);count=rows.length;html=bTop250(rows)}
+  else if(tab==='grouped'){const rows=flt(d.groupedR,'eventName');count=rows.length;html=bGrouped(rows)}
+  else if(tab==='top300tb'){const rows=flt(d.top300tb).filter(vis);count=rows.length;html=bMainTB(rows)}
+  else if(tab==='top300profit'){const rows=flt(d.top300profit).filter(vis);count=rows.length;html=bMainTB(rows)}
+  else if(tab==='top250ptb'){const rows=flt(d.top250ptb).filter(vis);count=rows.length;html=bMainTB(rows)}
+  else if(tab==='top250pnontb'){html=bTop250(sf(d.top250pnontb))}
+  else if(tab==='ns_urg'){const rows=flt(d.nsUrg,'event');count=rows.length;html=bNS(rows)}
+  else if(tab==='buy'){
+    // Read factor checkboxes
+    const reqFacs=[...document.querySelectorAll('.buy-fc:checked')].map(el=>el.dataset.fac);
+    // Read minimum signal count radio
+    const minEl=document.querySelector('input[name="buy-min"]:checked');
+    const minCount=minEl?parseInt(minEl.value)||0:0;
+    let buyRows=flt(d.buyS).filter(vis);
+    if(reqFacs.length>0) buyRows=buyRows.filter(r=>reqFacs.every(f=>r['f'+f]));
+    if(minCount>0) buyRows=buyRows.filter(r=>(r.signalCount||0)>=minCount);
+    count=buyRows.length;
+    html=bBuy(buyRows);
+  }
+  else if(tab==='up1'){html=bUp1(sf(d.up1))}
+  else if(tab==='up0'){html=bUp0(sf(d.up0))}
+  else if(tab==='velDiv'){const rows=flt(d.velDiv).filter(vis);count=rows.length;html=bVelDiv(rows)}
+  else if(tab==='p50'){html=bP50(sf(d.p50))}
+  else if(tab==='early'){html=bEarly(sf(d.earlyD))}
+  else if(tab==='tb'){const rows=flt(d.tbAl,'eventName');count=rows.length;html=bTB(rows)}
+  else if(tab==='funnybone'){html=bGroupedProp(sf(d.funnyBone),true)}
+  else if(tab==='vegas'){html=bGroupedProp(sf(d.vegas),true)}
+  else if(tab==='opry'){html=bMain(sf(d.opry))}
+  else if(tab==='disney'){html=bMain(sf(d.disney))}
+  else if(tab==='harlem'){html=bMain(sf(d.harlem))}
+  else if(tab==='stb'){html=bMain(sf(d.stb))}
+  else if(tab==='dwarfanator'){html=bGroupedProp(sf(d.dwarfanator),false)}
+  else if(tab==='shenyun'){html=bGroupedProp(sf(d.shenYun),false)}
+  else if(tab==='phantom'){html=bGroupedProp(sf(d.phantom),false)}
+  else if(tab==='lionking'){html=bGroupedProp(sf(d.lionKing),false)}
+  else if(tab==='ns_nonpark'){count=d.nsNP.length;html=bNSD(d.nsNP)}
+  else if(tab==='ns_park'){count=d.nsPK.length;html=bNSD(d.nsPK)}
+  else if(tab==='log'){html=bLog();count=S.log.length}
+
+  document.getElementById('table-wrap').innerHTML=html;
+  document.getElementById('row-count').textContent=NO_FILTER.includes(tab)?'':('Showing '+count.toLocaleString()+' events');
+  if(showHid){document.querySelectorAll('.row-chk').forEach(chk=>{if(S.hidden[chk.dataset.eid]){const tr=chk.closest('tr');if(tr)tr.classList.add('hidden-row')}})}
+  // Mark highlighted rows with amber tint across all views
+  document.querySelectorAll('tbody tr').forEach(tr=>{const chk=tr.querySelector('.row-chk');if(chk&&S.highlighted[chk.dataset.eid])tr.classList.add('hl-row');else tr.classList.remove('hl-row')});
+  // Re-check any still-selected checkboxes after re-render
+  if(S.selected&&S.selected.size){document.querySelectorAll('.row-chk').forEach(chk=>{if(S.selected.has(chk.dataset.eid))chk.checked=true})}
+}
+
+function mCard(l,v,c){return'<div class="metric"><div class="metric-label">'+l+'</div><div class="metric-val"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div></div>'}
+
+function updM(tab){
+  const d=S.data;if(!d)return;
+  let h='';
+  const prop={funnybone:'funnyBone',vegas:'vegas',opry:'opry',disney:'disney',harlem:'harlem',stb:'stb',dwarfanator:'dwarfanator',shenyun:'shenYun',phantom:'phantom',lionking:'lionKing'};
+  if(['summary','ns_summary','review'].includes(tab)){h=''}
+  else if(['main','top250pnontb'].includes(tab)||prop[tab]){
+    const src=prop[tab]?d[prop[tab]]:tab==='top250'?d.top250:tab==='top250pnontb'?d.top250pnontb:d.mainR;
+    const tR=src.reduce((s,r)=>s+r.total,0),tC=src.reduce((s,r)=>s+r.cost,0),tP=src.reduce((s,r)=>s+r.profit,0);
+    h=mCard('Events',src.length.toLocaleString())+mCard('Revenue',fM(tR))+mCard('Cost',fM(tC))+mCard('Profit',fM(tP),'#16a34a')+mCard('Profit %',fP(tR>0?tP/tR:0))
+  }
+  else if(['top300tb','top300profit','top250ptb'].includes(tab)){
+    const src=d[tab];const tR=src.reduce((s,r)=>s+r.total,0),tP=src.reduce((s,r)=>s+r.profit,0);
+    h=mCard('Events',src.length)+mCard('TB Events',src.filter(r=>r.isTB).length,'#92400e')+mCard('Revenue',fM(tR))+mCard('Profit',fM(tP),'#16a34a')+mCard('Profit %',fP(tR>0?tP/tR:0))
+  }
+  else if(['grouped','top250','up0','up1'].includes(tab)){h=''}
+  else if(tab==='ns_urg'){const cr=d.nsUrg.filter(r=>r.urgencyTier==='Critical').length,wt=d.nsUrg.filter(r=>r.urgencyTier==='Watch').length,aR=d.nsUrg.reduce((s,r)=>s+r.dollarAtRisk,0),tC=d.nsUrg.reduce((s,r)=>s+r.totalCost,0);h=mCard('Critical',cr,'#dc2626')+mCard('Watch',wt,'#d97706')+mCard('On Pace',d.nsUrg.filter(r=>r.urgencyTier==='On Pace').length,'#16a34a')+mCard('$ at Risk',fM(aR),'#dc2626')+mCard('Total NS Cost',fM(tC))}
+  else if(tab==='buy'){
+    const bothPath=d.buyS.filter(r=>r.signalPath==='Both').length;
+    const privPath=d.buyS.filter(r=>r.signalPath==='Private').length;
+    const clustPath=d.buyS.filter(r=>r.signalPath==='Clusters').length;
+    const confirmed=d.buyS.filter(r=>r.confirmed).length;
+    h='';
+  }
+  else if(tab==='velDiv'){h=''}
+  else if(tab==='p50'){h=mCard('50%+ Private',d.p50.length,'#7c3aed')+mCard('Avg % Private',d.p50.length?Math.round(d.p50.reduce((s,r)=>s+r.pctPrivate,0)/d.p50.length*100)+'%':'—')+mCard('Total Sales',d.p50.reduce((s,r)=>s+r.count,0))+mCard('Revenue',fM(d.p50.reduce((s,r)=>s+r.total,0)))+mCard('Profit',fM(d.p50.reduce((s,r)=>s+r.profit,0)))}
+  else if(tab==='ns_nonpark'||tab==='ns_park'){const src=tab==='ns_nonpark'?d.nsNP:d.nsPK;const tQ=src.reduce((s,r)=>s+r.qty,0),tC=src.reduce((s,r)=>s+r.cost,0);h=mCard('Events',[...new Set(src.map(r=>r.event))].length)+mCard('Tickets',tQ.toLocaleString())+mCard('$ Value',fM(tC))+mCard('Avg Cost/Ticket',tQ>0?fM(tC/tQ):'—')+mCard('','')}
+  else{h=mCard('Count','—')}
+  document.getElementById('metrics-bar').innerHTML=h;
+  document.getElementById('content-sub').textContent=S.data?S.data.mainR.length.toLocaleString()+' events \u00b7 '+S.data.nsUrg.length+' NS positions':''
+}
+
+function updCnts(){
+  const d=S.data;if(!d)return;
+  const sc=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||''};
+  sc('cnt-grouped',d.groupedR.length);
+  sc('cnt-ns_urg',d.nsUrg.filter(r=>['Critical','Watch'].includes(r.urgencyTier)).length||'');
+  sc('cnt-buy',d.buyS.length||'');sc('cnt-up1',d.up1.length||'');sc('cnt-up0',d.up0.length||'');
+  sc('cnt-review',Object.keys(S.highlighted).length||'');
+  sc('cnt-velDiv',d.velDiv.length||'');sc('cnt-p50',d.p50.length||'');
+  sc('cnt-early',d.earlyD.length||'');sc('cnt-tb',d.tbAl.length||'');
+  sc('cnt-funnybone',d.funnyBone.length||'');sc('cnt-vegas',d.vegas.length||'');sc('cnt-opry',d.opry.length||'');
+  sc('cnt-disney',d.disney.length||'');sc('cnt-harlem',d.harlem.length||'');sc('cnt-stb',d.stb.length||'');
+  sc('cnt-dwarfanator',d.dwarfanator.length||'');sc('cnt-shenyun',d.shenYun.length||'');sc('cnt-phantom',d.phantom.length||'');sc('cnt-lionking',d.lionKing.length||'');
+  sc('cnt-ns_nonpark',[...new Set(d.nsNP.map(r=>r.event))].length||'');
+  sc('cnt-ns_park',[...new Set(d.nsPK.map(r=>r.event))].length||'');
+  sc('cnt-log',S.log.length||'0')
+}
+
+function dA(type,id,nm){
+  if(type==='unhide'){delete S.hidden[id];try{localStorage.setItem('tip_h',JSON.stringify(S.hidden))}catch(e){}syncHidden([id],'show');applyF();return}
+  if(type==='note'||type==='price'){S.modal={type,eventId:id,eventName:nm};document.getElementById('modal-title').textContent=type==='note'?'Add Note':'Log Price Change';document.getElementById('modal-event').textContent=nm;document.getElementById('modal-input').value='';document.getElementById('modal-input').placeholder=type==='note'?'Enter note...':'New price, e.g. $125...';document.getElementById('modal').style.display='flex';setTimeout(()=>document.getElementById('modal-input').focus(),50);return}
+  const entry={type,eventId:id,eventName:nm,ts:new Date().toISOString()};
+  if(type==='hide'){S.hidden[id]=true;try{localStorage.setItem('tip_h',JSON.stringify(S.hidden))}catch(e){}syncHidden([id],'hide');entry.reason='Manually hidden'}
+  S.log.unshift(entry);try{localStorage.setItem('tip_l',JSON.stringify(S.log))}catch(e){}
+  document.getElementById('cnt-log').textContent=S.log.length;
+  applyF();
+  if(type!=='hide')showAl('✓ '+nm+' — '+(type==='buy'?'flagged as buy opportunity':type==='sm'?'marked as SM Hold':type==='escalate'?'escalated to management':type))
+}
+function closeModal(){document.getElementById('modal').style.display='none';S.modal=null}
+function submitModal(){const val=document.getElementById('modal-input').value.trim();if(!val||!S.modal)return;const e={type:S.modal.type,eventId:S.modal.eventId,eventName:S.modal.eventName,ts:new Date().toISOString()};e[S.modal.type]=val;S.log.unshift(e);try{localStorage.setItem('tip_l',JSON.stringify(S.log))}catch(r){}document.getElementById('cnt-log').textContent=S.log.length;closeModal();showAl('✓ '+e.eventName+' — '+(S.modal.type==='note'?'note saved':'price logged'))}
+function showAl(msg){document.getElementById('alert-text').textContent=msg;document.getElementById('alert-bar').style.display='flex';setTimeout(()=>document.getElementById('alert-bar').style.display='none',5000)}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+function toggleSel(el){
+  const id=el.dataset.eid;
+  if(el.checked)S.selected.add(id);else S.selected.delete(id);
+  const btn=document.getElementById('hide-sel-btn');
+  const cnt=document.getElementById('sel-count');
+  if(btn){btn.style.display=S.selected.size>0?'inline-flex':'none';if(cnt)cnt.textContent=S.selected.size}
+}
+async function hideSelected(){
+  const ids=[...S.selected];if(!ids.length)return;
+  ids.forEach(id=>{S.hidden[id]=true});
+  S.selected.clear();
+  try{localStorage.setItem('tip_h',JSON.stringify(S.hidden))}catch(e){}
+  const btn=document.getElementById('hide-sel-btn');if(btn)btn.style.display='none';
+  await syncHidden(ids,'hide');
+  applyF();
+  showAl('Hidden '+ids.length+' event'+(ids.length>1?'s':''))
+}
+// Shared hidden/highlight state: rows in the ticket_intel_state table (kind = 'hidden' or 'highlight').
+async function tiRequest(path,opts={}){
+  const call=tok=>fetch(TI_SB+'/rest/v1/'+path,{...opts,headers:{...(opts.headers||{}),apikey:TI_KEY,Authorization:'Bearer '+tok}});
+  let r=await call(sessionStorage.getItem('dl_token')||'');
+  if(r.status===401){
+    const rt=sessionStorage.getItem('dl_refresh');
+    const rr=rt?await fetch(TI_SB+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:TI_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:rt})}):null;
+    const d=rr&&rr.ok?await rr.json():{};
+    if(!d.access_token){location.replace('../');throw new Error('Session expired, sign in to Dune Listings again')}
+    sessionStorage.setItem('dl_token',d.access_token);sessionStorage.setItem('dl_refresh',d.refresh_token||rt);
+    r=await call(d.access_token);
+  }
+  if(!r.ok)throw new Error('Team state request failed ('+r.status+')');
+  return r;
+}
+async function tiSet(kind,ids,on){
+  if(!ids.length)return;
+  if(on){
+    await tiRequest('ticket_intel_state?on_conflict=kind,event_id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=ignore-duplicates'},body:JSON.stringify(ids.map(id=>({kind,event_id:String(id)})))});
+  }else{
+    const q=new URLSearchParams({kind:'eq.'+kind,event_id:'in.('+ids.map(id=>'"'+String(id).replace(/"/g,'')+'"').join(',')+')'});
+    await tiRequest('ticket_intel_state?'+q,{method:'DELETE'});
+  }
+}
+async function tiLoad(kind){
+  const r=await tiRequest('ticket_intel_state?'+new URLSearchParams({kind:'eq.'+kind,select:'event_id',limit:'100000'}));
+  return new Set((await r.json()).map(x=>String(x.event_id)));
+}
+// Make the local map match the team list. Re-renders only when something changed.
+async function reconcile(kind,map,storageKey){
+  const server=await tiLoad(kind);
+  let changed=false;
+  server.forEach(id=>{if(!map[id]){map[id]=true;changed=true}});
+  Object.keys(map).forEach(id=>{if(!server.has(id)){delete map[id];changed=true}});
+  if(changed){try{localStorage.setItem(storageKey,JSON.stringify(map))}catch(e){};applyF()}
+}
+async function syncHidden(ids,action){
+  try{await tiSet('hidden',ids,action==='hide')}catch(e){console.error(e);showAl('Team sync failed, not saved for others: '+e.message)}
+}
+async function loadHidden(){
+  try{await reconcile('hidden',S.hidden,'tip_h')}catch(e){console.warn('Hidden sync:',e.message)}
+}
+async function syncHighlight(ids,action){
+  try{await tiSet('highlight',ids,action==='add')}catch(e){console.error(e);showAl('Team sync failed, not saved for others: '+e.message)}
+}
+async function loadHighlight(){
+  try{await reconcile('highlight',S.highlighted,'tip_hl')}catch(e){console.warn('Highlight sync:',e.message)}
+}
+// Poll the team list every 20 seconds so other users' changes show up (highlight poll is below)
+setInterval(loadHidden,20000);
+function toggleHighlight(id,nm){
+  if(S.highlighted[id]){
+    delete S.highlighted[id];
+    syncHighlight([id],'remove');
+  } else {
+    S.highlighted[id]=true;
+    syncHighlight([id],'add');
+  }
+  try{localStorage.setItem('tip_hl',JSON.stringify(S.highlighted))}catch(e){}
+  applyF();
+}
+// Poll highlights every 20 seconds
+setInterval(loadHighlight,20000);
+
+tryAutoLoad();
+loadHidden();
+loadHighlight();
+if(localStorage.getItem('sbCol')==='1'){const sb=document.getElementById('sidebar');if(sb)sb.classList.add('sb-collapsed')}
+</script>
+</body>
+</html>
