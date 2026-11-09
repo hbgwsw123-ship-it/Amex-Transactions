@@ -416,6 +416,29 @@ async function tiStateWrite(kind,ids,action){
     if(!r.ok)throw new Error('Shared '+kind+' save failed ('+r.status+')');
   }
 }
+// Shared venue / artist / event ticket-link fixes (table ticket_intel_links)
+async function tiLinkRead(){
+  const rows=[];
+  for(let off=0;;off+=1000){
+    const r=await tiCall(TI_SB+'/rest/v1/ticket_intel_links?select=kind,key,url,provider,name,updated_at&order=kind.asc,key.asc&limit=1000&offset='+off);
+    if(!r.ok)throw new Error('Shared link list failed ('+r.status+')');
+    const page=await r.json();
+    rows.push(...page);
+    if(page.length<1000)break;
+  }
+  const out={overrides:{},entities:{artist:{},event:{}}};
+  rows.forEach(x=>{
+    const o={url:x.url,provider:x.provider,name:x.name||'',ts:x.updated_at};
+    if(x.kind==='venue')out.overrides[x.key]=o;else out.entities[x.kind][x.key]=o;
+  });
+  return out;
+}
+async function tiLinkWrite(rows){
+  for(let i=0;i<rows.length;i+=200){
+    const r=await tiCall(TI_SB+'/rest/v1/ticket_intel_links',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows.slice(i,i+200))});
+    if(!r.ok)throw new Error('Shared link save failed ('+r.status+')');
+  }
+}
 function tiBoot(){
   AUTH.token=sessionStorage.getItem('dl_token');
   _applyRole(TI_IS_UPLOADER?'manager':'user',tiEmail());
@@ -4965,11 +4988,11 @@ function saveVenueUrl(venue,remove){
   applyF();
 }
 async function syncVenueUrl(key,url,provider,name){
-  try{/* venue links: local only in the Ticket Intel embed */}catch(e){}
+  try{await tiLinkWrite([{kind:'venue',key:key,url:url,provider:provider,name:name}])}catch(e){console.error(e);showAl('Venue link fix not saved to the team list: '+e.message)}
 }
 async function loadVenueUrls(){
   try{
-    const data={overrides:{}};
+    const data=await tiLinkRead();
     const server=data.overrides||{};
     let changed=false;
     // Merge: localStorage is source of truth, but pull in any overrides set by other users.
@@ -5076,11 +5099,11 @@ function saveEntityUrl(kind,key,name,remove){
   applyF();
 }
 async function syncEntityUrl(kind,key,url,provider,name){
-  try{/* entity links: local only in the Ticket Intel embed */}catch(e){}
+  try{await tiLinkWrite([{kind:kind,key:key,url:url,provider:provider,name:name}])}catch(e){console.error(e);showAl('Artist/event link fix not saved to the team list: '+e.message)}
 }
 async function loadEntityUrls(){
   try{
-    const data={entities:{}};
+    const data=await tiLinkRead();
     const server=data.entities||{};
     let changed=false;
     ['artist','event'].forEach(kind=>{
