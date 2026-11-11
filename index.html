@@ -914,7 +914,7 @@ async function openPendingApprovals(){
   PA_SHOW_REJECTED=false;
   await renderPendingApprovals();
 }
-function enterApp(){sessionStorage.setItem('dl_token',TOKEN);if(REFRESH)sessionStorage.setItem('dl_refresh',REFRESH);$('#login').style.display='none';$('#app').style.display='block';setAdminUI();if($('#pa-btn'))$('#pa-btn').style.display=currentEmail()==='harry@seatsavant.com'?'inline-block':'none';logActivity('session_start',null,{source:'login'});resetAndLoad();refreshTabCounts();refreshNewEventsCount()}
+function enterApp(){sessionStorage.setItem('dl_token',TOKEN);if(REFRESH)sessionStorage.setItem('dl_refresh',REFRESH);$('#login').style.display='none';$('#app').style.display='block';setAdminUI();if($('#pa-btn'))$('#pa-btn').style.display=currentEmail()==='harry@seatsavant.com'?'inline-block':'none';logActivity('session_start',null,{source:'login'});resetAndLoad();refreshTabCounts();refreshNewEventsCount();if(currentEmail()==='harry@seatsavant.com'&&new URLSearchParams(location.search).get('approvals')==='1'){history.replaceState(null,'',location.pathname);openPendingApprovals()}}
 // Approval gate: a signed-in account enters the app only if Harry approved it and it has first name, last name and team.
 // 2FA with an authenticator app (TOTP). After a password or Google sign-in the session is aal1; a verified code makes it aal2.
 // The database (laa_is_approved) also requires aal2, so listing data stays locked until the code is verified.
