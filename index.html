@@ -967,6 +967,7 @@ function cancelMfa(){clearAuthSession();MFA_FACTOR='';MFA_CHALLENGE='';showPanel
 // Add or remove a passkey needs a password + authenticator code session (the server refuses otherwise), so a stolen password cannot add one.
 function pkB64ToBuf(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u.buffer}
 function pkBufToB64(b){const u=new Uint8Array(b);let s='';for(let i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function pkOnComputer(){return !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)}
 function pkIdList(l){return(l||[]).map(c=>Object.assign({},c,{id:pkB64ToBuf(c.id),type:c.type||'public-key'}))}
 function pkSerialize(c){
   if(typeof c.toJSON==='function')return c.toJSON();
@@ -991,6 +992,8 @@ async function signInWithPasskey(){
     if(!o1.ok||!s1.options)throw Object.assign(Error(s1.msg||'could not start'),{code:s1.error_code||''});
     const o=s1.options,pub=Object.assign({},o,{challenge:pkB64ToBuf(o.challenge)});
     if(o.allowCredentials)pub.allowCredentials=pkIdList(o.allowCredentials);
+    // On a computer: show the phone QR code directly (not the Windows passkey prompt).
+    if(pkOnComputer())pub.hints=['hybrid'];
     const cred=await navigator.credentials.get({publicKey:pub});
     showAuthMsg('Signing in…');
     const v=await fetch(SB+'/auth/v1/passkeys/authentication/verify',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({challenge_id:s1.challenge_id,credential:pkSerialize(cred)})});
@@ -1010,8 +1013,8 @@ async function addPasskey(){
     const s=await authCall('/auth/v1/passkeys/registration/options','POST',{}),o=s.options;
     const pub=Object.assign({},o,{challenge:pkB64ToBuf(o.challenge),user:Object.assign({},o.user,{id:pkB64ToBuf(o.user.id)})});
     if(o.excludeCredentials)pub.excludeCredentials=pkIdList(o.excludeCredentials);
-    // On a computer ask for the phone (browser shows a QR code); on a phone use its own passkey storage.
-    if(!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent))pub.hints=['hybrid'];
+    // On a computer: phone only (QR code), never Windows Hello or a security key. On a phone: its own passkey storage.
+    if(pkOnComputer()){pub.hints=['hybrid'];pub.authenticatorSelection=Object.assign({},o.authenticatorSelection||{},{authenticatorAttachment:'cross-platform'})}
     const cred=await navigator.credentials.create({publicKey:pub});
     await freshToken();
     await authCall('/auth/v1/passkeys/registration/verify','POST',{challenge_id:s.challenge_id,credential:pkSerialize(cred)});
