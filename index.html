@@ -879,23 +879,29 @@ function jwtEmail(token){try{let s=token.split('.')[1].replace(/-/g,'+').replace
 function clearAuthSession(){TOKEN='';REFRESH='';sessionStorage.removeItem('dl_token');sessionStorage.removeItem('dl_refresh')}
 function showAuthMsg(msg){$('#authmsg').textContent=msg||''}
 function showPanel(which){['#signinFields','#signupFields','#profileFields'].forEach(s=>{$(s).style.display=s===which?'block':'none'});$('#googlebtn').style.display=which==='#profileFields'?'none':'block';$('#signupbtn').style.display=which==='#signinFields'?'block':'none'}
-// Harry approves new sign-ups here. Pending rows are readable and updatable only by harry@seatsavant.com (RLS policy laa_admin_all).
-async function fetchPendingApprovals(){const r=await fetch(SB+'/rest/v1/listing_access_approvals?select=email,first_name,last_name,team,provider&approved=eq.false&order=email.asc',{headers:{apikey:KEY,Authorization:'Bearer '+TOKEN}});if(!r.ok)throw Error('pending list failed ('+r.status+')');return r.json()}
-async function approveAccount(email){const r=await fetch(SB+'/rest/v1/listing_access_approvals?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+TOKEN,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({approved:true})});if(!r.ok)throw Error('approve failed ('+r.status+')');const rows=await r.json();if(!rows.length)throw Error('no row updated for '+email);return true}
+// Harry approves or rejects new sign-ups here. Only harry@seatsavant.com can read or change these rows (RLS policy laa_admin_all).
+// rejected_at marks a rejection. A rejected account stays out and can be approved again from the Rejected list.
+let PA_SHOW_REJECTED=false;
+async function fetchApprovalRows(filter){const r=await fetch(SB+'/rest/v1/listing_access_approvals?select=email,first_name,last_name,team,provider,rejected_at&'+filter+'&order=email.asc',{headers:{apikey:KEY,Authorization:'Bearer '+TOKEN}});if(!r.ok)throw Error('approval list failed ('+r.status+')');return r.json()}
+async function setApproval(email,approve){const body=approve?{approved:true,rejected_at:null}:{approved:false,rejected_at:new Date().toISOString()};const r=await fetch(SB+'/rest/v1/listing_access_approvals?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+TOKEN,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(body)});if(!r.ok)throw Error('update failed ('+r.status+')');const rows=await r.json();if(!rows.length)throw Error('no row updated for '+email);return true}
 async function renderPendingApprovals(){
   const box=document.getElementById('pa-list');if(!box)return;
   try{
-    const rows=await fetchPendingApprovals();
+    const rows=await fetchApprovalRows(PA_SHOW_REJECTED?'approved=eq.false&rejected_at=not.is.null':'approved=eq.false&rejected_at=is.null');
     box.textContent='';
-    if(!rows.length){box.textContent='No accounts are waiting for approval.';return}
+    const toggle=document.createElement('div');toggle.style.cssText='margin-bottom:8px';
+    const tb=document.createElement('button');tb.textContent=PA_SHOW_REJECTED?'Show pending':'Show rejected';tb.style.cssText='border:0;background:none;color:#2457a6;cursor:pointer;padding:0;font-size:13px';tb.onclick=()=>{PA_SHOW_REJECTED=!PA_SHOW_REJECTED;renderPendingApprovals()};toggle.appendChild(tb);box.appendChild(toggle);
+    if(!rows.length){const n=document.createElement('div');n.textContent=PA_SHOW_REJECTED?'No rejected accounts.':'No accounts are waiting for approval.';box.appendChild(n);return}
     rows.forEach(r=>{
       const row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 0;border-top:1px solid #edf0f5';
       const who=document.createElement('div');const name=[r.first_name,r.last_name].filter(Boolean).join(' ');
       who.textContent=r.email+(name?' - '+name:'')+(r.team?' ('+r.team+')':'')+(r.provider?' · '+r.provider:'');
-      const b=document.createElement('button');b.textContent='Approve';b.style.cssText='border:1px solid #dde2ea;background:white;color:#166534;border-radius:6px;padding:5px 10px;cursor:pointer;font-weight:650';
-      b.onclick=async()=>{b.disabled=true;b.textContent='Approving...';try{await approveAccount(r.email);await renderPendingApprovals()}catch(err){alert(err.message);b.disabled=false;b.textContent='Approve'}};
-      row.append(who,b);box.appendChild(row)});
-  }catch(err){box.textContent='Could not load pending accounts: '+err.message}
+      const btns=document.createElement('div');btns.style.cssText='display:flex;gap:6px;flex:none';
+      const mk=(label,color,approve)=>{const b=document.createElement('button');b.textContent=label;b.style.cssText='border:1px solid #dde2ea;background:white;color:'+color+';border-radius:6px;padding:5px 10px;cursor:pointer;font-weight:650';b.onclick=async()=>{if(!approve&&!confirm('Reject '+r.email+'? They stay out of the listings until you approve them again.'))return;btns.querySelectorAll('button').forEach(x=>x.disabled=true);b.textContent=approve?'Approving...':'Rejecting...';try{await setApproval(r.email,approve);await renderPendingApprovals()}catch(err){alert(err.message);btns.querySelectorAll('button').forEach(x=>x.disabled=false);b.textContent=label}};return b};
+      btns.append(mk('Approve','#166534',true));
+      if(!PA_SHOW_REJECTED)btns.append(mk('Reject','#b42318',false));
+      row.append(who,btns);box.appendChild(row)});
+  }catch(err){box.textContent='Could not load accounts: '+err.message}
 }
 async function openPendingApprovals(){
   const old=document.getElementById('pa-modal');if(old)old.remove();
@@ -905,8 +911,10 @@ async function openPendingApprovals(){
   document.body.appendChild(m);
   m.querySelector('#pa-close').onclick=()=>m.remove();
   m.onclick=e=>{if(e.target===m)m.remove()};
+  PA_SHOW_REJECTED=false;
   await renderPendingApprovals();
-}function enterApp(){sessionStorage.setItem('dl_token',TOKEN);if(REFRESH)sessionStorage.setItem('dl_refresh',REFRESH);$('#login').style.display='none';$('#app').style.display='block';setAdminUI();if($('#pa-btn'))$('#pa-btn').style.display=currentEmail()==='harry@seatsavant.com'?'inline-block':'none';logActivity('session_start',null,{source:'login'});resetAndLoad();refreshTabCounts();refreshNewEventsCount()}
+}
+function enterApp(){sessionStorage.setItem('dl_token',TOKEN);if(REFRESH)sessionStorage.setItem('dl_refresh',REFRESH);$('#login').style.display='none';$('#app').style.display='block';setAdminUI();if($('#pa-btn'))$('#pa-btn').style.display=currentEmail()==='harry@seatsavant.com'?'inline-block':'none';logActivity('session_start',null,{source:'login'});resetAndLoad();refreshTabCounts();refreshNewEventsCount()}
 // Approval gate: a signed-in account enters the app only if Harry approved it and it has first name, last name and team.
 async function gateAndEnter(email){const row=await listingAccessRow(email,TOKEN);if(row===undefined){clearAuthSession();showPanel('#signinFields');showAuthMsg('Your session expired. Please sign in again.');return false}if(!row||row.approved!==true){clearAuthSession();showPanel('#signinFields');showAuthMsg('Your account is waiting for approval. Harry needs to approve it before you can see listings.');return false}if(!row.first_name||!row.last_name||!row.team){showPanel('#profileFields');showAuthMsg('Enter your first name, last name, and team to finish.');return false}enterApp();return true}
 async function signIn(){const login=$('#email').value.trim().toLowerCase(),email=USERMAP[login]||login,password=$('#password').value;showAuthMsg('Signing in…');const r=await fetch(SB+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});const d=await r.json();if(!r.ok||!d.access_token){showAuthMsg(d.error_description||d.msg||'Sign-in failed. Check your username and password, or create an account.');return}TOKEN=d.access_token;REFRESH=d.refresh_token||'';await gateAndEnter(email)}
