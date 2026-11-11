@@ -983,9 +983,22 @@ function pkErrorText(err,doing){
   if(err&&err.code==='webauthn_credential_not_found')return 'This passkey is not registered here (it may have been removed). Use your password, then add a passkey again.';
   return (doing||'Passkey step')+' failed: '+((err&&err.message)||'unknown error')+'.';
 }
-async function signInWithPasskey(){
+// One passkey prompt at a time: a second click while Windows or the browser is waiting would fail with "A request is already pending".
+let PK_BUSY=false;
+async function pkGuard(fn){
+  if(PK_BUSY){const m='A passkey prompt is already open. Finish it on your phone, or press Cancel in the Windows box, then try again.';const t=document.getElementById('pk-msg');if(t)t.textContent=m;else showAuthMsg(m);return}
+  PK_BUSY=true;
+  try{await fn()}finally{PK_BUSY=false}
+}
+// Chrome reports whether this computer can reach a phone over Bluetooth. If not, the phone QR option cannot appear.
+// This only adds a note; it never blocks the sign-in prompt.
+async function pkPhoneNote(){
+  try{if(pkOnComputer()&&window.PublicKeyCredential&&PublicKeyCredential.getClientCapabilities){const c=await PublicKeyCredential.getClientCapabilities();if(c&&c.hybridTransport===false)return 'This computer cannot reach a phone (no Bluetooth link), so Windows may only offer a security key. Turn on Bluetooth to use the phone QR code.'}}catch(e){}
+  return '';
+}async function signInWithPasskey(){return pkGuard(pkSignIn)}
+async function pkSignIn(){
   if(!window.PublicKeyCredential||!navigator.credentials){showAuthMsg('This browser does not support passkeys. Use your password instead.');return}
-  showAuthMsg('Opening the passkey prompt…');
+  showAuthMsg((await pkPhoneNote()) || 'Opening the passkey prompt…');
   try{
     const o1=await fetch(SB+'/auth/v1/passkeys/authentication/options',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:'{}'});
     const s1=await o1.json().catch(()=>({}));
@@ -1005,10 +1018,11 @@ async function signInWithPasskey(){
   }catch(err){clearAuthSession();showAuthMsg(pkErrorText(err,'Passkey sign-in'))}
 }
 async function freshToken(){const c=jwtClaims(TOKEN);if(c.exp&&c.exp*1000-Date.now()<60000)await refreshSession()}
-async function addPasskey(){
+async function addPasskey(){return pkGuard(pkAdd)}
+async function pkAdd(){
   const msg=document.getElementById('pk-msg'),say=t=>{if(msg)msg.textContent=t};
   try{
-    say('Opening the passkey prompt…');
+    say((await pkPhoneNote()) || 'Opening the passkey prompt…');
     await freshToken();
     const s=await authCall('/auth/v1/passkeys/registration/options','POST',{}),o=s.options;
     const pub=Object.assign({},o,{challenge:pkB64ToBuf(o.challenge),user:Object.assign({},o.user,{id:pkB64ToBuf(o.user.id)})});
