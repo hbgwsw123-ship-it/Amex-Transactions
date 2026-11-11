@@ -896,6 +896,7 @@ async function renderPendingApprovals(){
       const row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 0;border-top:1px solid #edf0f5';
       const who=document.createElement('div');const name=[r.first_name,r.last_name].filter(Boolean).join(' ');
       who.textContent=r.email+(name?' - '+name:'')+(r.team?' ('+r.team+')':'')+(r.provider?' · '+r.provider:'');
+      if(!r.first_name||!r.last_name||!r.team){const pf=document.createElement('div');pf.textContent='Profile not finished: no name or team yet. They enter these after sign-in.';pf.style.cssText='color:#b42318;font-size:12px;margin-top:2px';who.appendChild(pf)}
       const btns=document.createElement('div');btns.style.cssText='display:flex;gap:6px;flex:none';
       const mk=(label,color,approve)=>{const b=document.createElement('button');b.textContent=label;b.style.cssText='border:1px solid #dde2ea;background:white;color:'+color+';border-radius:6px;padding:5px 10px;cursor:pointer;font-weight:650';b.onclick=async()=>{if(!approve&&!confirm('Reject '+r.email+'? They stay out of the listings until you approve them again.'))return;btns.querySelectorAll('button').forEach(x=>x.disabled=true);b.textContent=approve?'Approving...':'Rejecting...';try{await setApproval(r.email,approve);await renderPendingApprovals()}catch(err){alert(err.message);btns.querySelectorAll('button').forEach(x=>x.disabled=false);b.textContent=label}};return b};
       btns.append(mk('Approve','#166534',true));
