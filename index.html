@@ -162,12 +162,12 @@ async function refreshSession(){
   const d=await r.json();
   if(!d.access_token)return false;
   TOKEN=d.access_token;REFRESH=d.refresh_token||REFRESH;
-  sessionStorage.setItem('dl_token',TOKEN);sessionStorage.setItem('dl_refresh',REFRESH);
+  sessionStorage.setItem('dl_token',TOKEN);sessionStorage.setItem('dl_refresh',REFRESH);phoneKeep();
   return true;
 }
 function clearSession(){
   TOKEN='';REFRESH='';
-  sessionStorage.removeItem('dl_token');sessionStorage.removeItem('dl_refresh');sessionStorage.removeItem('dl_qr_sid');
+  sessionStorage.removeItem('dl_token');sessionStorage.removeItem('dl_refresh');sessionStorage.removeItem('dl_qr_sid');phoneClear();
 }
 async function apiFetch(url,opts={}){
   const headers={...(opts.headers||{}),apikey:KEY,Authorization:'Bearer '+TOKEN};
@@ -877,7 +877,7 @@ document.querySelectorAll('input[name="pri"]').forEach(x=>x.addEventListener('ch
 // Fail-closed: any error or missing/unapproved row blocks the session. Harry approves new accounts in public.listing_access_approvals.
 async function listingAccessRow(email,token){const r=await fetch(SB+'/rest/v1/listing_access_approvals?select=approved,first_name,last_name,team&email=eq.'+encodeURIComponent(email),{headers:{apikey:KEY,Authorization:'Bearer '+token}});if(!r.ok)return undefined;const rows=await r.json();return rows[0]||null}
 function jwtEmail(token){try{let s=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return String(JSON.parse(atob(s)).email||'').toLowerCase()}catch(e){return ''}}
-function clearAuthSession(){TOKEN='';REFRESH='';sessionStorage.removeItem('dl_token');sessionStorage.removeItem('dl_refresh');sessionStorage.removeItem('dl_qr_sid')}
+function clearAuthSession(){TOKEN='';REFRESH='';sessionStorage.removeItem('dl_token');sessionStorage.removeItem('dl_refresh');sessionStorage.removeItem('dl_qr_sid');phoneClear()}
 function showAuthMsg(msg){$('#authmsg').textContent=msg||''}
 function showPanel(which){['#signinFields','#signupFields','#profileFields','#mfaFields','#qrFields'].forEach(s=>{$(s).style.display=s===which?'block':'none'});$('#googlebtn').style.display=(which==='#profileFields'||which==='#mfaFields'||which==='#qrFields')?'none':'block';$('#signupbtn').style.display=which==='#signinFields'?'block':'none'}
 // Harry approves or rejects new sign-ups here. Only harry@seatsavant.com can read or change these rows (RLS policy laa_admin_all).
@@ -916,7 +916,7 @@ async function openPendingApprovals(){
   PA_SHOW_REJECTED=false;
   await renderPendingApprovals();
 }
-function enterApp(){sessionStorage.setItem('dl_token',TOKEN);if(REFRESH)sessionStorage.setItem('dl_refresh',REFRESH);$('#login').style.display='none';$('#app').style.display='block';setAdminUI();if($('#pa-btn'))$('#pa-btn').style.display=currentEmail()==='harry@seatsavant.com'?'inline-block':'none';logActivity('session_start',null,{source:'login'});resetAndLoad();refreshTabCounts();refreshNewEventsCount();if(currentEmail()==='harry@seatsavant.com'&&new URLSearchParams(location.search).get('approvals')==='1'){history.replaceState(null,'',location.pathname);openPendingApprovals()}qrPhoneCheck()}
+function enterApp(){sessionStorage.setItem('dl_token',TOKEN);if(REFRESH)sessionStorage.setItem('dl_refresh',REFRESH);phoneKeep();$('#login').style.display='none';$('#app').style.display='block';setAdminUI();if($('#pa-btn'))$('#pa-btn').style.display=currentEmail()==='harry@seatsavant.com'?'inline-block':'none';logActivity('session_start',null,{source:'login'});resetAndLoad();refreshTabCounts();refreshNewEventsCount();if(currentEmail()==='harry@seatsavant.com'&&new URLSearchParams(location.search).get('approvals')==='1'){history.replaceState(null,'',location.pathname);openPendingApprovals()}qrPhoneCheck()}
 // Approval gate: a signed-in account enters the app only if Harry approved it and it has first name, last name and team.
 // 2FA with an authenticator app (TOTP). After a password or Google sign-in the session is aal1; a verified code makes it aal2.
 // The database (laa_is_approved) also requires aal2, so listing data stays locked until the code is verified.
@@ -1160,12 +1160,20 @@ function openQrApprove(id){
 }
 // On a phone the phone itself approves, so the QR options do not apply: passkeys here mean one saved on this phone.
 if(!pkOnComputer()){const pb=document.getElementById('passkeybtn');if(pb)pb.textContent='Sign in with a passkey saved on this phone';const qb=document.getElementById('qrbtn');if(qb)qb.style.display='none'}
-if(sessionStorage.getItem('pk_qr')&&!TOKEN)showAuthMsg('To approve your computer sign-in, tap Sign in with a passkey saved on this phone and confirm with Face ID or fingerprint. First time on this phone? Sign in with your password and 6-digit code, then add a passkey under Passkeys.');
+// A phone stays signed in for 30 days from first sign-in (like a trusted device), so approving a computer needs one tap.
+// Computers keep the normal tab-only session.
+const PHONE_SESSION_KEY='dl_phone_session';
+function tokenFresh(t){const e=jwtClaims(t).exp;return !!e&&e*1000>Date.now()+60000}
+function phoneKeep(){if(pkOnComputer()||!TOKEN)return;let until=0;try{const o=JSON.parse(localStorage.getItem(PHONE_SESSION_KEY)||'null');if(o&&o.until>Date.now())until=o.until}catch(e){}if(!until)until=Date.now()+30*864e5;try{localStorage.setItem(PHONE_SESSION_KEY,JSON.stringify({token:TOKEN,refresh:REFRESH||'',until}))}catch(e){}}
+function phoneClear(){try{localStorage.removeItem(PHONE_SESSION_KEY)}catch(e){}}
+function phoneRestore(){if(pkOnComputer()||TOKEN)return;try{const s=JSON.parse(localStorage.getItem(PHONE_SESSION_KEY)||'null');if(!s||!s.token||!(s.until>Date.now())){phoneClear();return}TOKEN=s.token;REFRESH=s.refresh||''}catch(e){phoneClear()}}
+phoneRestore();
+if(sessionStorage.getItem('pk_qr')&&!TOKEN)showAuthMsg('To approve your computer sign-in: sign in here once with your email, password and 6-digit code. This phone then stays signed in, so next time scanning only needs Approve.');
 async function signIn(){const login=$('#email').value.trim().toLowerCase(),email=USERMAP[login]||login,password=$('#password').value;showAuthMsg('Signing in…');const r=await fetch(SB+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});const d=await r.json();if(!r.ok||!d.access_token){showAuthMsg(d.error_description||d.msg||'Sign-in failed. Check your username and password, or create an account.');return}TOKEN=d.access_token;REFRESH=d.refresh_token||'';await afterPasswordAuth(email)}
 async function createAccount(){const first=$('#firstName').value.trim(),last=$('#lastName').value.trim(),team=$('#teamName').value.trim(),email=$('#signupEmail').value.trim().toLowerCase(),password=$('#signupPassword').value;const pwErr=pwProblem(password);if(!first||!last||!team||!email||pwErr){showAuthMsg(pwErr||'First name, last name, team, and email are all required.');return}showAuthMsg('Creating account…');const r=await fetch(SB+'/auth/v1/signup',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password,data:{first_name:first,last_name:last,team:team}})});const d=await r.json();if(!r.ok){showAuthMsg(d.msg||d.error_description||d.message||'Could not create the account.');return}if(d.access_token){TOKEN=d.access_token;REFRESH=d.refresh_token||'';await afterPasswordAuth(email);return}showPanel('#signinFields');showAuthMsg('Account created. Check your email for a confirmation link, then sign in. Harry must approve your account before you can see listings.')}
 function signInWithGoogle(){location.href=SB+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(location.origin+location.pathname)}
 async function handleOAuthReturn(){const h=new URLSearchParams(location.hash.replace(/^#/,''));const at=h.get('access_token');if(!at)return false;history.replaceState(null,'',location.pathname+location.search);TOKEN=at;REFRESH=h.get('refresh_token')||'';await afterPasswordAuth(jwtEmail(at));return true}
 async function saveProfile(){const first=$('#pFirst').value.trim(),last=$('#pLast').value.trim(),team=$('#pTeam').value.trim();if(!first||!last||!team){showAuthMsg('First name, last name, and team are required.');return}const r=await fetch(SB+'/rest/v1/rpc/laa_save_profile',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+TOKEN,'Content-Type':'application/json'},body:JSON.stringify({p_first:first,p_last:last,p_team:team})});if(!r.ok){showAuthMsg('Could not save your profile. Please try again.');return}await gateAndEnter(jwtEmail(TOKEN))}
 $('#loginbtn').onclick=signIn;$('#passkeybtn').onclick=signInWithPasskey;$('#qrbtn').onclick=qrStartComputer;$('#qrnew').onclick=qrStartComputer;$('#qrcancel').onclick=()=>{qrStop();showPanel('#signinFields');showAuthMsg('')};if(!window.PublicKeyCredential)$('#passkeybtn').style.display='none';$('#password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});$('#signupbtn').onclick=()=>{showPanel('#signupFields');showAuthMsg('')};$('#backbtn').onclick=()=>{showPanel('#signinFields');showAuthMsg('')};$('#createbtn').onclick=createAccount;$('#googlebtn').onclick=signInWithGoogle;$('#profilebtn').onclick=saveProfile;$('#logout').onclick=()=>{clearSession();location.reload()};
-handleOAuthReturn().then(done=>{if(!done&&TOKEN)gateAndEnter(jwtEmail(TOKEN))});
+handleOAuthReturn().then(async done=>{if(!done&&TOKEN){if(!pkOnComputer()&&!tokenFresh(TOKEN)&&!(await refreshSession())){clearAuthSession();showPanel('#signinFields');return}gateAndEnter(jwtEmail(TOKEN))}});
 </script></div></body></html>
